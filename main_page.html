@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Mobile Map App</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    
+    <!-- Leaflet Rotate Plugin CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tomickigrzegorz/leaflet-rotate@0.3.0/dist/leaflet-rotate.css">
+
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/design.css">
+
+    <!-- EmailJS SDK -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <script type="text/javascript">
+        (function() {
+            emailjs.init("0tSUEPFUAl8ioeFNs");
+        })();
+    </script>
+</head>
+<body>
+
+    <!-- Header Floating Search Bar with Hamburger on Left -->
+    <header class="app-header">
+        <button class="menu-btn" id="menuToggle" aria-label="Open menu">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="search-container">
+            <input type="text" class="search-input" id="searchInput" placeholder="Search location..." aria-label="Search map">
+            <button class="search-btn" id="searchBtn" aria-label="Search">
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Side Navigation Overlay & Drawer -->
+    <div class="nav-overlay" id="navOverlay"></div>
+    <nav class="side-drawer" id="sideDrawer">
+        <div class="drawer-header">
+            <h2>OCNP</h2>
+            <button class="close-btn" id="closeDrawer" aria-label="Close menu"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <ul class="drawer-menu">
+            <li>
+                <a href="#" id="themeToggleBtn">
+                    <i class="fa-solid fa-moon" id="themeIcon"></i>
+                    <span id="themeLabel">Dark Mode</span>
+                </a>
+            </li>
+            <li>
+                <a href="#" id="feedbackLink">
+                    <i class="fa-solid fa-envelope-open"></i>Feedback
+                </a>
+            </li>
+            <li>
+                <a href="#" id="aboutLink">
+                    <i class="fa-solid fa-circle-info"></i>About Us / Contact Us
+                </a>
+            </li>
+            <li>
+                <a href="#" id="attributionsLink">
+                    <i class="fa-solid fa-users"></i>Attributions
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Feedback Modal Window -->
+    <div class="modal-overlay" id="feedbackModal">
+        <div class="feedback-window">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-comments"></i> Send Feedback</h3>
+                <button class="modal-close-btn" id="closeFeedbackBtn" aria-label="Close feedback"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <form id="feedbackForm">
+                <div class="form-group">
+                    <label for="userEmail"><i class="fa-regular fa-envelope"></i> Email</label>
+                    <input type="email" id="userEmail" class="form-input" placeholder="enter your email here" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="feedbackSubject"><i class="fa-solid fa-tag"></i> Subject</label>
+                    <input type="text" id="feedbackSubject" class="form-input" placeholder="enter subject here" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="feedbackMessage"><i class="fa-solid fa-message"></i> Feedback</label>
+                    <textarea id="feedbackMessage" class="form-textarea" placeholder="enter your feedback here..." rows="4" required></textarea>
+                </div>
+
+                <button type="submit" class="send-btn" id="sendFeedbackBtn">
+                    <i class="fa-solid fa-paper-plane"></i> Send Feedback
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Feedback Sent Success Alert Popup -->
+    <div class="modal-overlay" id="successModal">
+        <div class="success-popup">
+            <div class="success-icon">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <h3>Feedback Sent!</h3>
+            <p>Thank you for helping us improve OCNP. Your message has been sent to support.</p>
+            <button class="popup-close-btn" id="closeSuccessBtn">Close & Return to Map</button>
+        </div>
+    </div>
+
+    <!-- Generic Info Modal for About & Attributions -->
+    <div class="modal-overlay" id="infoModal">
+        <div class="feedback-window">
+            <div class="modal-header">
+                <h3 id="infoModalTitle">Info</h3>
+                <button class="modal-close-btn" id="closeInfoBtn" aria-label="Close info"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="infoModalBody" class="info-modal-body">
+                <!-- Dynamic Content -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Map Container -->
+    <div id="oc_map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <!-- Leaflet Rotate Plugin JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@tomickigrzegorz/leaflet-rotate@0.3.0/dist/leaflet-rotate.umd.min.js"></script>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // Initialize Map with Rotation Support & Compass hidden at 0° bearing
+        var oc_map = L.map('oc_map', {
+            zoomControl: false,
+            rotate: true,              
+            touchRotate: true,         
+            shiftKeyRotate: true,      
+            dragRotate: true,          
+            bounceAtZoom: false,
+            touchZoom: 'center',
+            rotateControl: {
+                position: 'topright',
+                closeOnZeroBearing: true // Compass hides when pointing North (0°), appears when rotated
+            }
+        }).setView([14.4788, 120.9964], 18);
+
+        if (oc_map.touchRotate) {
+            oc_map.touchRotate.enable();
+        }
+
+        document.getElementById('oc_map').addEventListener('contextmenu', function (e) {
+            e.preventDefault();
+        });
+
+        // Map Tile Layers
+        var osm_map = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        });
+
+        var dark_map = L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20,
+            attribution: '&copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
+        });
+
+        osm_map.addTo(oc_map);
+        var currentTileLayer = osm_map;
+        var searchMarker = null;
+
+        // Drawer Menu Toggle
+        const menuToggle = document.getElementById('menuToggle');
+        const closeDrawer = document.getElementById('closeDrawer');
+        const sideDrawer = document.getElementById('sideDrawer');
+        const navOverlay = document.getElementById('navOverlay');
+
+        function openMenu() {
+            sideDrawer.classList.add('active');
+            navOverlay.classList.add('active');
+        }
+
+        function closeMenu() {
+            sideDrawer.classList.remove('active');
+            navOverlay.classList.remove('active');
+        }
+
+        menuToggle.addEventListener('click', openMenu);
+        closeDrawer.addEventListener('click', closeMenu);
+        navOverlay.addEventListener('click', closeMenu);
+
+        // Modal Controls
+        const feedbackLink = document.getElementById('feedbackLink');
+        const feedbackModal = document.getElementById('feedbackModal');
+        const closeFeedbackBtn = document.getElementById('closeFeedbackBtn');
+        const sendFeedbackBtn = document.getElementById('sendFeedbackBtn');
+        const feedbackForm = document.getElementById('feedbackForm');
+        const successModal = document.getElementById('successModal');
+        const closeSuccessBtn = document.getElementById('closeSuccessBtn');
+
+        feedbackLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            closeMenu();
+            feedbackModal.classList.add('active');
+        });
+
+        closeFeedbackBtn.addEventListener('click', () => {
+            feedbackModal.classList.remove('active');
+        });
+
+        // EmailJS Submission
+        feedbackForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            sendFeedbackBtn.disabled = true;
+            sendFeedbackBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Sending...`;
+
+            const email = document.getElementById('userEmail').value;
+            const subject = document.getElementById('feedbackSubject').value;
+            const message = document.getElementById('feedbackMessage').value;
+
+            const templateParams = {
+                name: email,
+                email: email,
+                subject: subject,
+                message: message
+            };
+
+            emailjs.send('service_wdyvki8', 'template_86k881g', templateParams)
+                .then(function(response) {
+                    console.log('SUCCESS!', response.status, response.text);
+                    feedbackModal.classList.remove('active');
+                    successModal.classList.add('active');
+                    feedbackForm.reset();
+                }, function(error) {
+                    console.error('FAILED...', error);
+                    alert('Failed to send feedback automatically. Opening email client instead...');
+                    
+                    const recipientEmail = "dwightjustin.reyes@olivarezcollege.edu.ph";
+                    window.location.href = `mailto:${recipientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent("From: " + email + "\n\n" + message)}`;
+                    feedbackModal.classList.remove('active');
+                })
+                .finally(function() {
+                    sendFeedbackBtn.disabled = false;
+                    sendFeedbackBtn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Send Feedback`;
+                });
+        });
+
+        closeSuccessBtn.addEventListener('click', () => {
+            successModal.classList.remove('active');
+        });
+
+        // Light / Dark Theme Logic
+        const themeToggleBtn = document.getElementById('themeToggleBtn');
+        const themeIcon = document.getElementById('themeIcon');
+        const themeLabel = document.getElementById('themeLabel');
+        let isDarkMode = false;
+
+        themeToggleBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            isDarkMode = !isDarkMode;
+
+            if (isDarkMode) {
+                oc_map.removeLayer(currentTileLayer);
+                dark_map.addTo(oc_map);
+                currentTileLayer = dark_map;
+                
+                document.body.classList.add('dark-theme');
+                themeIcon.className = 'fa-solid fa-sun';
+                themeLabel.textContent = 'Light Mode';
+            } else {
+                oc_map.removeLayer(currentTileLayer);
+                osm_map.addTo(oc_map);
+                currentTileLayer = osm_map;
+
+                document.body.classList.remove('dark-theme');
+                themeIcon.className = 'fa-solid fa-moon';
+                themeLabel.textContent = 'Dark Mode';
+            }
+            closeMenu();
+        });
+
+        // Location Search
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+
+        function performSearch() {
+            const query = searchInput.value.trim();
+            if (!query) return;
+
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.length > 0) {
+                        const lat = parseFloat(data[0].lat);
+                        const lon = parseFloat(data[0].lon);
+
+                        oc_map.setView([lat, lon], 16);
+
+                        if (searchMarker) {
+                            oc_map.removeLayer(searchMarker);
+                        }
+
+                        searchMarker = L.marker([lat, lon]).addTo(oc_map)
+                            .bindPopup(`<b>${data[0].display_name}</b>`)
+                            .openPopup();
+                    } else {
+                        alert('Location not found. Please try another search term.');
+                    }
+                })
+                .catch(err => {
+                    console.error('Search error:', err);
+                    alert('Error searching for location.');
+                });
+        }
+
+        searchBtn.addEventListener('click', performSearch);
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') performSearch();
+        });
+
+        // About & Attributions Modals
+        const infoModal = document.getElementById('infoModal');
+        const infoModalTitle = document.getElementById('infoModalTitle');
+        const infoModalBody = document.getElementById('infoModalBody');
+        const closeInfoBtn = document.getElementById('closeInfoBtn');
+
+        document.getElementById('aboutLink').addEventListener('click', (e) => {
+            e.preventDefault();
+            closeMenu();
+            infoModalTitle.innerHTML = `<i class="fa-solid fa-circle-info"></i> About Us / Contact Us`;
+            infoModalBody.innerHTML = `
+                <p style="margin-bottom:10px;"><strong>OCNP Mobile Navigation</strong></p>
+                <p style="margin-bottom:10px;">Providing accurate interactive location mapping and mobile map interfaces.</p>
+                <p><strong>Contact:</strong> <br><a href="mailto:dwightjustin.reyes@olivarezcollege.edu.ph" class="break-email">dwightjustin.reyes@olivarezcollege.edu.ph</a></p>
+            `;
+            infoModal.classList.add('active');
+        });
+
+        document.getElementById('attributionsLink').addEventListener('click', (e) => {
+            e.preventDefault();
+            closeMenu();
+            infoModalTitle.innerHTML = `<i class="fa-solid fa-users"></i> Attributions`;
+            infoModalBody.innerHTML = `
+                <ul class="info-list">
+                    <li><i class="fa-solid fa-map"></i> <span>Maps &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors</span></li>
+                    <li><i class="fa-solid fa-layer-group"></i> <span>Dark Tiles &copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a></span></li>
+                    <li><i class="fa-solid fa-code"></i> <span>Leaflet JS Engine</span></li>
+                    <li><i class="fa-solid fa-compass"></i> <span>Leaflet Rotate Plugin by Grzegorz Tomicki</span></li>
+                    <li><i class="fa-solid fa-icons"></i> <span>Icons by FontAwesome</span></li>
+                </ul>
+            `;
+            infoModal.classList.add('active');
+        });
+
+        closeInfoBtn.addEventListener('click', () => {
+            infoModal.classList.remove('active');
+        });
+    </script>
+</body>
+</html>

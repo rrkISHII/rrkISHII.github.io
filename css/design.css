@@ -584,11 +584,3 @@ body.dark-theme .leaflet-control-rotate {
 body.dark-theme .leaflet-control-rotate .leaflet-control-rotate-arrow {
     filter: invert(100%);
 }
-
-/* Dark Mode Map Filter */
-body.dark-theme .leaflet-layer,
-body.dark-theme .leaflet-control-zoom-in,
-body.dark-theme .leaflet-control-zoom-out,
-body.dark-theme .leaflet-control-attribution {
-  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
-}

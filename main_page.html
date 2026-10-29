@@ -203,19 +203,17 @@
             e.preventDefault();
         });
 
-        // Map Tile Layers (Stadia Stamen Terrain for both light & dark)
-        var light_map = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_terrain/{z}/{x}/{y}{r}.{ext}', {
+        // OpenFreeMap Base Layers (No API Key Required)
+        var light_map = L.tileLayer('https://tiles.openfreemap.org/styles/positron/{z}/{x}/{y}.png', {
             minZoom: 0,
-            maxZoom: 18,
-            attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            ext: 'png'
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://openfreemap.org/" target="_blank">OpenFreeMap</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
         });
 
-        var dark_map = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_terrain/{z}/{x}/{y}{r}.{ext}', {
+        var dark_map = L.tileLayer('https://tiles.openfreemap.org/styles/liberty/{z}/{x}/{y}.png', {
             minZoom: 0,
-            maxZoom: 18,
-            attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            ext: 'png'
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://openfreemap.org/" target="_blank">OpenFreeMap</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
         });
 
         light_map.addTo(oc_map);
@@ -353,7 +351,7 @@
             }
         });
 
-        // --- Updated GeoJSON Integration ---
+        // --- GeoJSON Data Integration ---
         const geojsonData = {
           "type": "FeatureCollection",
           "features": [
@@ -855,13 +853,12 @@
                     console.warn("Invalid bounds for feature.");
                 }
 
-                // Extract building name and ID dynamically from properties
                 let propKey = Object.keys(feature.properties)[0];
                 let buildingName = propKey ? propKey : "Campus Location";
                 let buildingId = feature.properties[propKey] || "";
 
                 const handleBuildingClick = () => {
-                    // Check specifically for DPRO building to trigger customized bottom sheet info
+                    // Customized bottom sheet info specifically for DPRO only
                     if (buildingId === "OC_DPRO") {
                         openBottomSheet({
                             title: "DPRO Building",
@@ -881,7 +878,6 @@
 
                 layer.on('click', handleBuildingClick);
 
-                // Place marker icon on center of polygon
                 if (center) {
                     let iconClass = "fa-solid fa-building";
                     let iconColor = "#0B793D";
@@ -1138,7 +1134,7 @@
             infoModalTitle.innerHTML = `<i class="fa-solid fa-users"></i> Attributions`;
             infoModalBody.innerHTML = `
                 <ul class="info-list">
-                    <li><i class="fa-solid fa-map"></i> <span>Maps &copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a></span></li>
+                    <li><i class="fa-solid fa-map"></i> <span>Maps &copy; <a href="https://openfreemap.org/" target="_blank">OpenFreeMap</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a></span></li>
                     <li><i class="fa-solid fa-code"></i> <span>Leaflet JS Engine</span></li>
                     <li><i class="fa-solid fa-compass"></i> <span>Leaflet Rotate Plugin by Grzegorz Tomicki</span></li>
                     <li><i class="fa-solid fa-icons"></i> <span>Icons by FontAwesome</span></li>

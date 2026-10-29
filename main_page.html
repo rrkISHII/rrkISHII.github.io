@@ -138,7 +138,7 @@
         <i class="fa-solid fa-crosshairs"></i>
     </button>
 
-    <!-- Google Maps Style Swipeable Bottom Sheet 1 -->
+    <!-- Google Maps Style Swipeable Bottom Sheet -->
     <div class="bottom-sheet-overlay" id="bottomSheetOverlay"></div>
     <div class="bottom-sheet" id="bottomSheet">
         <!-- Drag Handle Area -->
@@ -155,7 +155,7 @@
 
         <!-- Scrollable Content -->
         <div class="sheet-content" id="sheetContent">
-            <!-- 3 Images Carousel / Grid Row -->
+            <!-- 3 Images Gallery Row -->
             <div class="sheet-images-gallery" id="sheetImagesGallery">
                 <div class="sheet-image-box">
                     <div class="sheet-placeholder-text">
@@ -217,6 +217,13 @@
             e.preventDefault();
         });
 
+        // Close bottom sheet when tapping empty map space
+        oc_map.on('click', function(e) {
+            if (currentSnapState !== 'closed') {
+                closeBottomSheet();
+            }
+        });
+
         // Fixed Basemaps
         var light_map = L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png', {
             minZoom: 0,
@@ -267,7 +274,7 @@
         function snapToState(state) {
             currentSnapState = state;
             bottomSheet.classList.remove('dragging');
-            bottomSheet.style.transition = 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)';
+            bottomSheet.style.transition = 'transform 0.4s cubic-bezier(0.25, 1, 0.3, 1)';
 
             if (state === 'expanded') {
                 bottomSheet.style.transform = 'translateY(0px)';
@@ -345,7 +352,6 @@
             isDragging = false;
 
             const deltaY = currentY - startY;
-            const peekOffset = getPeekOffsetY();
 
             if (currentSnapState === 'peek') {
                 if (deltaY < -60) {
@@ -892,7 +898,10 @@
                 let buildingName = propKey ? propKey : "Campus Location";
                 let buildingId = feature.properties[propKey] || "";
 
-                const handleBuildingClick = () => {
+                const handleBuildingClick = (e) => {
+                    if (e && e.originalEvent) {
+                        L.DomEvent.stopPropagation(e);
+                    }
                     if (buildingId === "OC_DPRO") {
                         openBottomSheet({
                             title: "DPRO Building",
@@ -930,12 +939,16 @@
                         iconColor = "#d9534f";
                     }
 
+                    // Custom label icon with icon + building name text in #0B793D
                     const customIcon = L.divIcon({
-                        className: 'custom-map-icon',
-                        html: `<div style="background-color: white; padding: 6px; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.3); text-align: center; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">
-                                   <i class="${iconClass}" style="color: ${iconColor}; font-size: 14px;"></i>
+                        className: 'building-label-marker',
+                        html: `<div class="map-label-pill">
+                                   <div class="map-label-icon" style="color: ${iconColor};">
+                                       <i class="${iconClass}"></i>
+                                   </div>
+                                   <span class="map-label-text">${buildingName}</span>
                                </div>`,
-                        iconSize: [30, 30],
+                        iconSize: null,
                         iconAnchor: [15, 15]
                     });
 

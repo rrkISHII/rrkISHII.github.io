@@ -133,7 +133,7 @@
     <!-- Map Container -->
     <div id="oc_map"></div>
 
-    <!-- Bottom Right Geolocation Floating Button 1-->
+    <!-- Bottom Right Geolocation Floating Button -->
     <button class="my-location-btn" id="myLocationBtn" aria-label="Go to my location" title="Go to my location">
         <i class="fa-solid fa-crosshairs"></i>
     </button>
@@ -183,6 +183,9 @@
             <p class="sheet-description" id="sheetDescription">
                 Building description text goes here...
             </p>
+            
+            <!-- Entrances Container -->
+            <div id="entrancesContainer" style="margin-top: 15px;"></div>
         </div>
     </div>
 
@@ -242,6 +245,7 @@
         var searchMarker = null;
         let userMarker = null;
         let accuracyCircle = null;
+        let routeLayer = null;
 
         // --- Dynamic Swipeable Bottom Sheet Logic ---
         const bottomSheet = document.getElementById('bottomSheet');
@@ -251,6 +255,7 @@
         const goToDestinationBtn = document.getElementById('goToDestinationBtn');
         const sheetTitle = document.getElementById('sheetTitle');
         const sheetDescription = document.getElementById('sheetDescription');
+        const entrancesContainer = document.getElementById('entrancesContainer');
 
         const sheetImgElements = [
             document.getElementById('sheetImage1'),
@@ -258,7 +263,7 @@
             document.getElementById('sheetImage3')
         ];
 
-        let activeDestinationCoords = null;
+        let activeBuildingData = null;
         let currentSnapState = 'closed';
         let startY = 0;
         let currentY = 0;
@@ -292,7 +297,22 @@
         function openBottomSheet(data) {
             sheetTitle.textContent = data.title || "Location Details";
             sheetDescription.textContent = data.description || "No description available.";
-            activeDestinationCoords = data.coords || null;
+            activeBuildingData = data;
+
+            // Render entrances list if available
+            entrancesContainer.innerHTML = '';
+            if (data.entrances && data.entrances.length > 0) {
+                let html = '<h4>Building Entrances:</h4><ul style="list-style:none; padding:0; margin-top:5px;">';
+                data.entrances.forEach((ent, idx) => {
+                    html += `<li style="margin-bottom: 8px;">
+                        <button onclick="routeToEntrance(${ent.coords[1]}, ${ent.coords[0]}, '${ent.name}')" style="width:100%; padding:8px; background:#0B793D; color:white; border:none; border-radius:6px; cursor:pointer;">
+                            <i class="fa-solid fa-person-walking"></i> Route to ${ent.name}
+                        </button>
+                    </li>`;
+                });
+                html += '</ul>';
+                entrancesContainer.innerHTML = html;
+            }
 
             const imageUrls = Array.isArray(data.imageUrls) ? data.imageUrls : (data.imageUrl ? [data.imageUrl] : []);
 
@@ -385,12 +405,93 @@
         bottomSheetOverlay.addEventListener('click', closeBottomSheet);
 
         goToDestinationBtn.addEventListener('click', () => {
-            if (activeDestinationCoords) {
-                alert(`Routing to: Lat ${activeDestinationCoords.lat}, Lng ${activeDestinationCoords.lng}`);
+            if (!activeBuildingData) return;
+            if (activeBuildingData.entrances && activeBuildingData.entrances.length > 0) {
+                if (activeBuildingData.entrances.length === 1) {
+                    const ent = activeBuildingData.entrances[0];
+                    routeToEntrance(ent.coords[1], ent.coords[0], ent.name);
+                } else {
+                    snapToState('expanded'); // Expand bottom sheet to pick entrance
+                }
+            } else if (activeBuildingData.coords) {
+                routeToEntrance(activeBuildingData.coords.lat, activeBuildingData.coords.lng, "Building Center");
             } else {
-                alert("Go to destination clicked!");
+                alert("No destination coordinates found.");
             }
         });
+
+        // --- Stadia Maps Routing Integration ---
+        function routeToEntrance(destLat, destLng, entranceName) {
+            if (!userMarker) {
+                alert("Please tap the 'My Location' (crosshairs) button first so we know where you are starting from!");
+                return;
+            }
+
+            const userLatLng = userMarker.getLatLng();
+            closeBottomSheet();
+
+            // Stadia Maps Valhalla routing API endpoint (Requires free API key or public demo key format)
+            // Note: Replace with your actual Stadia Maps API key if required.
+            const url = `https://api.stadiamaps.com/route/v1?api_key=YOUR-STADIA-API-KEY`;
+
+            // Alternatively, using OSRM or Valhalla public endpoint pattern if using custom proxy/key:
+            const valhallaPayload = {
+                locations: [
+                    { lat: userLatLng.lat, lon: userLatLng.lng },
+                    { lat: destLat, lon: destLng }
+                ],
+                costing: "pedestrian",
+                directions_options: { units: "metric" }
+            };
+
+            // Fetching route from Valhalla API
+            fetch("https://valhalla.openstreetmap.de/route", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(valhallaPayload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.trip && data.trip.legs) {
+                    const shape = data.trip.legs[0].shape;
+                    const decodedCoords = decodePolyline(shape);
+
+                    if (routeLayer) oc_map.removeLayer(routeLayer);
+                    routeLayer = L.polyline(decodedCoords, { color: '#0B793D', weight: 5, opacity: 0.8 }).addTo(oc_map);
+                    oc_map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
+                } else {
+                    alert("Could not calculate walking path.");
+                }
+            })
+            .catch(err => {
+                console.error("Routing error:", err);
+                alert("Routing service unavailable. Please check connection.");
+            });
+        }
+
+        // Valhalla polyline decoder helper
+        function decodePolyline(str, precision = 6) {
+            let index = 0, lat = 0, lng = 0, coordinates = [], shift = 0, result = 0, byte = null, latitude_change, longitude_change, factor = Math.pow(10, precision);
+            while (index < str.length) {
+                byte = null; shift = 0; result = 0;
+                do {
+                    byte = str.charCodeAt(index++) - 63;
+                    result |= (byte & 0x1f) << shift;
+                    shift += 5;
+                } while (byte >= 0x20);
+                latitude_change = ((result & 1) ? ~(result >> 1) : (result >> 1));
+                shift = 0; result = 0;
+                do {
+                    byte = str.charCodeAt(index++) - 63;
+                    result |= (byte & 0x1f) << shift;
+                    shift += 5;
+                } while (byte >= 0x20);
+                longitude_change = ((result & 1) ? ~(result >> 1) : (result >> 1));
+                lat += latitude_change; lng += longitude_change;
+                coordinates.push([lat / factor, lng / factor]);
+            }
+            return coordinates;
+        }
 
         // --- GeoJSON Data Integration ---
         const geojsonData = {
@@ -411,7 +512,10 @@
                 ]
               },
               "properties": {
-                "CASA": "OC_CASA"
+                "CASA": "OC_CASA",
+                "entrances": [
+                    { "name": "entrance1", "coords": [120.9961076, 14.4787418] }
+                ]
               },
               "bbox": [120.995903, 14.478503, 120.996153, 14.478802]
             },
@@ -430,7 +534,12 @@
                 ]
               },
               "properties": {
-                "COLISEUM": "OC_COLISEUM"
+                "COLISEUM": "OC_COLISEUM",
+                "entrances": [
+                    { "name": "entrance1", "coords": [120.9956791, 14.4789423] },
+                    { "name": "entrance2", "coords": [120.9957774438681, 14.478732658268525] },
+                    { "name": "entrance3", "coords": [120.99564995201155, 14.478473528478775] }
+                ]
               },
               "bbox": [120.995257, 14.478372, 120.995846, 14.47903]
             },
@@ -449,7 +558,10 @@
                 ]
               },
               "properties": {
-                "VISUAL ARTS": "OC_VISUAL ARTS"
+                "VISUAL ARTS": "OC_VISUAL ARTS",
+                "entrances": [
+                    { "name": "entrance1", "coords": [120.99558392201025, 14.478338425374373] }
+                ]
               },
               "bbox": [120.995222, 14.478301, 120.9956, 14.478533]
             },
@@ -468,7 +580,10 @@
                 ]
               },
               "properties": {
-                "POOL AREA": "OC_POOL AREA"
+                "POOL AREA": "OC_POOL AREA",
+                "entrances": [
+                    { "name": "entrance1", "coords": [120.99545055843339, 14.478064581997145] }
+                ]
               },
               "bbox": [120.995075, 14.478002, 120.995566, 14.478459]
             },
@@ -489,7 +604,10 @@
                 ]
               },
               "properties": {
-                "FOOD AND BEVERAGE": "OC_HM-LAB"
+                "KITCHEN": "OC_HM-LAB",
+                "entrances": [
+                    { "name": "entrance1", "coords": [120.9959015, 14.4788548] }
+                ]
               },
               "bbox": [120.995764, 14.478569, 120.996013, 14.478866]
             },
@@ -508,7 +626,12 @@
                 ]
               },
               "properties": {
-                "DPRO": "OC_DPRO"
+                "DPRO": "OC_DPRO",
+                "entrances": [
+                    { "name": "entrance1", "coords": [120.9957326, 14.4785637] },
+                    { "name": "entrance2", "coords": [120.99554275771337, 14.47816783136998] },
+                    { "name": "entrance3", "coords": [120.9956231549142, 14.47807015327761] }
+                ]
               },
               "bbox": [120.995522, 14.477984, 120.99604, 14.478635]
             },
@@ -527,7 +650,10 @@
                 ]
               },
               "properties": {
-                "RESORT": "OC_RESORT"
+                "RESORT": "OC_RESORT",
+                "entrances": [
+                    { "name": "entrance1", "coords": [120.9954426739182, 14.477966694407993] }
+                ]
               },
               "bbox": [120.995383, 14.477753, 120.995768, 14.477976]
             },
@@ -546,7 +672,11 @@
                 ]
               },
               "properties": {
-                "GYMNASIUM": "OC_GYMNASIUM"
+                "GYMNASIUM": "OC_GYMNASIUM",
+                "entrances": [
+                    { "name": "entrance1", "coords": [120.9963312, 14.4787549] },
+                    { "name": "entrance2", "coords": [120.9966599, 14.4786009] }
+                ]
               },
               "bbox": [120.996124, 14.478356, 120.996746, 14.478802]
             },
@@ -566,7 +696,10 @@
                 ]
               },
               "properties": {
-                "EYE CENTER - OGH": "OGH_EYE-CENTER"
+                "EYE CENTER - OGH": "OGH_EYE-CENTER",
+                "entrances": [
+                    { "name": "entrance1", "coords": [120.9971067, 14.4787617] }
+                ]
               },
               "bbox": [120.996901, 14.478487, 120.997188, 14.478803]
             },
@@ -585,7 +718,10 @@
                 ]
               },
               "properties": {
-                "CRIMINOLOGY BUILDING": "OC_CRIM"
+                "CRIMINOLOGY BUILDING": "OC_CRIM",
+                "entrances": [
+                    { "name": "entrance1", "coords": [120.9975242, 14.4791037] }
+                ]
               },
               "bbox": [120.997507, 14.479023, 120.997687, 14.479244]
             },
@@ -607,7 +743,11 @@
                 ]
               },
               "properties": {
-                "OLI'S DEN": "OC_CAFETERIA"
+                "OLI'S DEN": "OC_CAFETERIA",
+                "entrances": [
+                    { "name": "entrance1", "coords": [120.9965527, 14.4792975] },
+                    { "name": "entrance2", "coords": [120.9964432, 14.4794603] }
+                ]
               },
               "bbox": [120.996431, 14.479117, 120.996854, 14.479502]
             },
@@ -626,7 +766,10 @@
                 ]
               },
               "properties": {
-                "CAFÉ": "OC_CAFÉ"
+                "CAFÉ": "OC_CAFÉ",
+                "entrances": [
+                    { "name": "entrance1", "coords": [120.9968241, 14.4791587] }
+                ]
               },
               "bbox": [120.996793, 14.479142, 120.996924, 14.479301]
             },
@@ -649,7 +792,10 @@
                 ]
               },
               "properties": {
-                "OLIVAREZ GENERAL HOSPITAL": "OGH"
+                "OLIVAREZ GENERAL HOSPITAL": "OGH",
+                "entrances": [
+                    { "name": "entrance1", "coords": [120.9972304, 14.4790346] }
+                ]
               },
               "bbox": [120.996861, 14.478851, 120.997357, 14.479317]
             },
@@ -669,7 +815,10 @@
                 ]
               },
               "properties": {
-                "CLINIC": "OC_CLINIC"
+                "CLINIC": "OC_CLINIC",
+                "entrances": [
+                    { "name": "entrance1", "coords": [120.99650246254262, 14.479566029034112] }
+                ]
               },
               "bbox": [120.996471, 14.479415, 120.996695, 14.479618]
             },
@@ -688,7 +837,10 @@
                 ]
               },
               "properties": {
-                "BOOKSTORE": "OC_BOOKSTORE"
+                "BOOKSTORE": "OC_BOOKSTORE",
+                "entrances": [
+                    { "name": "entrance1", "coords": [120.9965573, 14.4796969] }
+                ]
               },
               "bbox": [120.996551, 14.479578, 120.996778, 14.479775]
             },
@@ -707,7 +859,11 @@
                 ]
               },
               "properties": {
-                "SDL BUILDING": "OC_SDL"
+                "SDL BUILDING": "OC_SDL",
+                "entrances": [
+                    { "name": "entrance1", "coords": [120.9967432129069, 14.479535429886065] },
+                    { "name": "entrance2", "coords": [120.99680355890432, 14.479655265909274] }
+                ]
               },
               "bbox": [120.996673, 14.479336, 120.996933, 14.479676]
             },
@@ -726,7 +882,11 @@
                 ]
               },
               "properties": {
-                "ELO BUILDING": "OC_ELO"
+                "ELO BUILDING": "OC_ELO",
+                "entrances": [
+                    { "name": "entrance1", "coords": [120.9962516, 14.4789395] },
+                    { "name": "entrance2", "coords": [120.9965141, 14.4788727] }
+                ]
               },
               "bbox": [120.996235, 14.478591, 120.996941, 14.478874]
             },
@@ -752,7 +912,10 @@
                 ]
               },
               "properties": {
-                "IBED": "OC_IBED"
+                "IBED": "OC_IBED",
+                "entrances": [
+                    { "name": "entrance1", "coords": [120.9959253, 14.4790586] }
+                ]
               },
               "bbox": [120.995519, 14.478964, 120.99598, 14.479324]
             },
@@ -777,7 +940,13 @@
                 ]
               },
               "properties": {
-                "ADL BUILDING": "OC_ADL"
+                "ADL BUILDING": "OC_ADL",
+                "entrances": [
+                    { "name": "entrance1", "coords": [120.99601142121669, 14.479020517815986] },
+                    { "name": "entrance2", "coords": [120.9963953, 14.4794815] },
+                    { "name": "entrance3", "coords": [120.9962337, 14.4795478] },
+                    { "name": "entrance4", "coords": [120.9964611, 14.4798509] }
+                ]
               },
               "bbox": [120.995975, 14.479002, 120.996478, 14.479887]
             },
@@ -796,7 +965,12 @@
                 ]
               },
               "properties": {
-                "PARKING": "OC_PARKING"
+                "PARKING": "OC_PARKING",
+                "entrances": [
+                    { "name": "car_entrance", "coords": [120.9959815, 14.4799264] },
+                    { "name": "entrance1", "coords": [120.9962861, 14.479802] },
+                    { "name": "entrance2", "coords": [120.9963746, 14.479896] }
+                ]
               },
               "bbox": [120.995965, 14.47978, 120.996389, 14.480026]
             },
@@ -816,7 +990,11 @@
                 ]
               },
               "properties": {
-                "Tennis Court": "OC_BOOKSTORE"
+                "Tennis Court": "OC_TENNIS",
+                "entrances": [
+                    { "name": "entrance1", "coords": [120.9972441, 14.4793578] },
+                    { "name": "entrance2", "coords": [120.9969204, 14.4795868] }
+                ]
               },
               "bbox": [120.996789, 14.479194, 120.99723, 14.479621]
             },
@@ -840,7 +1018,11 @@
                 ]
               },
               "properties": {
-                "BOTANICAL": "OC_BOTANICAL"
+                "BOTANICAL": "OC_BOTANICAL",
+                "entrances": [
+                    { "name": "entrance1", "coords": [120.99629107811809, 14.479717886932422] },
+                    { "name": "entrance2", "coords": [120.99609176968977, 14.479356207545141] }
+                ]
               },
               "bbox": [120.995695, 14.479304, 120.996322, 14.4799]
             },
@@ -885,7 +1067,7 @@
                 return { color: "#0B793D", weight: 1.5, fillColor: "#0B793D", fillOpacity: 0.2 };
             },
             onEachFeature: function (feature, layer) {
-                if (feature.properties.perimeter) return;
+                if (feature.properties.perimeter || feature.geometry.type === "Point") return;
 
                 let center = null;
                 try {
@@ -897,26 +1079,19 @@
                 let propKey = Object.keys(feature.properties)[0];
                 let buildingName = propKey ? propKey : "Campus Location";
                 let buildingId = feature.properties[propKey] || "";
+                let entrances = feature.properties.entrances || [];
 
                 const handleBuildingClick = (e) => {
                     if (e && e.originalEvent) {
                         L.DomEvent.stopPropagation(e);
                     }
-                    if (buildingId === "OC_DPRO") {
-                        openBottomSheet({
-                            title: "DPRO Building",
-                            description: "Olivarez College DPRO facility. Department offices and official functions.",
-                            imageUrls: [],
-                            coords: center
-                        });
-                    } else {
-                        openBottomSheet({
-                            title: buildingName,
-                            description: `Building ID: ${buildingId}`,
-                            imageUrls: [],
-                            coords: center
-                        });
-                    }
+                    openBottomSheet({
+                        title: buildingName,
+                        description: `Building ID: ${buildingId}`,
+                        imageUrls: [],
+                        coords: center,
+                        entrances: entrances
+                    });
                 };
 
                 layer.on('click', handleBuildingClick);
@@ -939,7 +1114,6 @@
                         iconColor = "#d9534f";
                     }
 
-                    // Custom label icon with icon + building name text in #0B793D
                     const customIcon = L.divIcon({
                         className: 'building-label-marker',
                         html: `<div class="map-label-pill">
@@ -1039,14 +1213,12 @@
 
             emailjs.send('service_wdyvki8', 'template_86k881g', templateParams)
                 .then(function(response) {
-                    console.log('SUCCESS!', response.status, response.text);
                     feedbackModal.classList.remove('active');
                     successModal.classList.add('active');
                     feedbackForm.reset();
                 }, function(error) {
                     console.error('FAILED...', error);
                     alert('Failed to send feedback automatically. Opening email client instead...');
-                    
                     const recipientEmail = "dwightjustin.reyes@olivarezcollege.edu.ph";
                     window.location.href = `mailto:${recipientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent("From: " + email + "\n\n" + message)}`;
                     feedbackModal.classList.remove('active');
@@ -1081,10 +1253,7 @@
                 themeLabel.textContent = 'Light Mode';
 
                 if (maskPolygon) {
-                    maskPolygon.setStyle({
-                        fillColor: '#000000',
-                        fillOpacity: 0.65
-                    });
+                    maskPolygon.setStyle({ fillColor: '#000000', fillOpacity: 0.65 });
                 }
             } else {
                 oc_map.removeLayer(currentTileLayer);
@@ -1096,10 +1265,7 @@
                 themeLabel.textContent = 'Dark Mode';
 
                 if (maskPolygon) {
-                    maskPolygon.setStyle({
-                        fillColor: '#111827',
-                        fillOpacity: 0.45
-                    });
+                    maskPolygon.setStyle({ fillColor: '#111827', fillOpacity: 0.45 });
                 }
             }
             closeMenu();
@@ -1176,18 +1342,14 @@
                 (error) => {
                     console.warn("Geolocation Error:", error);
                     if (error.code === error.POSITION_UNAVAILABLE) {
-                        alert("Device location is turned off. Please turn on Location/GPS in your phone's settings and try again.");
+                        alert("Device location is turned off. Please turn on Location/GPS.");
                     } else if (error.code === error.PERMISSION_DENIED) {
                         alert("Location access was denied in your browser settings.");
                     } else {
                         alert("Unable to acquire location signal.");
                     }
                 },
-                {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 0
-                }
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
         }
 

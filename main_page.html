@@ -203,17 +203,17 @@
             e.preventDefault();
         });
 
-        // OpenFreeMap Base Layers (No API Key Required)
-        var light_map = L.tileLayer('https://tiles.openfreemap.org/styles/positron/{z}/{x}/{y}.png', {
+        // Fixed Basemaps
+        var light_map = L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png', {
             minZoom: 0,
-            maxZoom: 19,
-            attribution: '&copy; <a href="https://openfreemap.org/" target="_blank">OpenFreeMap</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
+            maxZoom: 20,
+            attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         });
 
-        var dark_map = L.tileLayer('https://tiles.openfreemap.org/styles/liberty/{z}/{x}/{y}.png', {
+        var dark_map = L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png', {
             minZoom: 0,
-            maxZoom: 19,
-            attribution: '&copy; <a href="https://openfreemap.org/" target="_blank">OpenFreeMap</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
+            maxZoom: 20,
+            attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>, &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors'
         });
 
         light_map.addTo(oc_map);
@@ -687,7 +687,7 @@
               "properties": {
                 "ELO BUILDING": "OC_ELO"
               },
-              "bbox": [120.996235, 14.478591, 120.996941, 14.478974]
+              "bbox": [120.996235, 14.478591, 120.996941, 14.478874]
             },
             {
               "type": "Feature",
@@ -858,7 +858,6 @@
                 let buildingId = feature.properties[propKey] || "";
 
                 const handleBuildingClick = () => {
-                    // Customized bottom sheet info specifically for DPRO only
                     if (buildingId === "OC_DPRO") {
                         openBottomSheet({
                             title: "DPRO Building",
@@ -910,6 +909,28 @@
                 }
             }
         }).addTo(oc_map);
+
+        // --- Inverted Polygon Mask Overlay (Dimming Outside Area) ---
+        let maskPolygon = null;
+        const perimeterFeature = geojsonData.features.find(f => f.properties && f.properties.perimeter);
+
+        if (perimeterFeature) {
+            const perimeterLatLngs = perimeterFeature.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+
+            const worldOuterBounds = [
+                [90, -180],
+                [90, 180],
+                [-90, 180],
+                [-90, -180]
+            ];
+
+            maskPolygon = L.polygon([worldOuterBounds, perimeterLatLngs], {
+                color: 'transparent',
+                fillColor: '#111827',
+                fillOpacity: 0.45,
+                interactive: false
+            }).addTo(oc_map);
+        }
 
         // Drawer Menu Toggle
         const menuToggle = document.getElementById('menuToggle');
@@ -1010,6 +1031,13 @@
                 document.body.classList.add('dark-theme');
                 themeIcon.className = 'fa-solid fa-sun';
                 themeLabel.textContent = 'Light Mode';
+
+                if (maskPolygon) {
+                    maskPolygon.setStyle({
+                        fillColor: '#000000',
+                        fillOpacity: 0.65
+                    });
+                }
             } else {
                 oc_map.removeLayer(currentTileLayer);
                 light_map.addTo(oc_map);
@@ -1018,6 +1046,13 @@
                 document.body.classList.remove('dark-theme');
                 themeIcon.className = 'fa-solid fa-moon';
                 themeLabel.textContent = 'Dark Mode';
+
+                if (maskPolygon) {
+                    maskPolygon.setStyle({
+                        fillColor: '#111827',
+                        fillOpacity: 0.45
+                    });
+                }
             }
             closeMenu();
         });
@@ -1134,7 +1169,7 @@
             infoModalTitle.innerHTML = `<i class="fa-solid fa-users"></i> Attributions`;
             infoModalBody.innerHTML = `
                 <ul class="info-list">
-                    <li><i class="fa-solid fa-map"></i> <span>Maps &copy; <a href="https://openfreemap.org/" target="_blank">OpenFreeMap</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a></span></li>
+                    <li><i class="fa-solid fa-map"></i> <span>Maps &copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors</span></li>
                     <li><i class="fa-solid fa-code"></i> <span>Leaflet JS Engine</span></li>
                     <li><i class="fa-solid fa-compass"></i> <span>Leaflet Rotate Plugin by Grzegorz Tomicki</span></li>
                     <li><i class="fa-solid fa-icons"></i> <span>Icons by FontAwesome</span></li>

@@ -270,7 +270,7 @@
         let initialTransformY = 0;
         let isDragging = false;
 
-        const PEEK_HEIGHT = 160;
+        const PEEK_HEIGHT = 135;
 
         function getPeekOffsetY() {
             return window.innerHeight - PEEK_HEIGHT;
@@ -1059,11 +1059,9 @@
             style: function (feature) {
                 if (feature.properties.perimeter) {
                     return { color: "#d9534f", weight: 3, dashArray: "5, 5", fill: false };
-                } else if (feature.properties.GYMNASIUM) {
-                    return { color: "#ff7800", weight: 1.5, fillColor: "#ff7800", fillOpacity: 0.25 };
-                } else if (feature.properties.DPRO) {
-                    return { color: "#d9534f", weight: 1.5, fillColor: "#d9534f", fillOpacity: 0.25 };
-                }
+                } else if (feature.properties.PARKING) {
+                    return { color: "#2196F3", weight: 1.5, fillColor: "#2196F3", fillOpacity: 0.25 };
+                } 
                 return { color: "#0B793D", weight: 1.5, fillColor: "#0B793D", fillOpacity: 0.2 };
             },
             onEachFeature: function (feature, layer) {
@@ -1102,17 +1100,13 @@
                     
                     if (buildingName.includes("GYM")) {
                         iconClass = "fa-solid fa-dumbbell";
-                        iconColor = "#ff7800";
                     } else if (buildingName.includes("HOSPITAL") || buildingName.includes("EYE CENTER") || buildingName.includes("CLINIC")) {
                         iconClass = "fa-solid fa-hospital";
                         iconColor = "#d9534f";
                     } else if (buildingName.includes("PARKING")) {
                         iconClass = "fa-solid fa-square-parking";
                         iconColor = "#2196F3";
-                    } else if (buildingId === "OC_DPRO") {
-                        iconClass = "fa-solid fa-landmark";
-                        iconColor = "#d9534f";
-                    }
+                    } 
 
                     const customIcon = L.divIcon({
                         className: 'building-label-marker',

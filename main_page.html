@@ -146,9 +146,6 @@
             <div class="sheet-handle"></div>
             <div class="sheet-header">
                 <h3 id="sheetTitle">Building Title</h3>
-                <button class="sheet-close-btn" id="closeBottomSheetBtn" aria-label="Close bottom sheet">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
             </div>
             <!-- Prominent Action Button -->
             <button class="destination-btn" id="goToDestinationBtn">
@@ -158,12 +155,29 @@
 
         <!-- Scrollable Content -->
         <div class="sheet-content" id="sheetContent">
-            <div class="sheet-image-container" id="sheetImageContainer">
-                <div id="sheetPlaceholderText" style="display: flex; align-items: center;">
-                    <i class="fa-solid fa-image" style="font-size: 2rem; margin-right: 8px;"></i>
-                    <span>Image Placeholder (100% x 160px)</span>
+            <!-- 3 Images Carousel / Grid Row -->
+            <div class="sheet-images-gallery" id="sheetImagesGallery">
+                <div class="sheet-image-box">
+                    <div class="sheet-placeholder-text">
+                        <i class="fa-solid fa-image"></i>
+                        <span>Photo 1</span>
+                    </div>
+                    <img id="sheetImage1" src="" alt="Building Photo 1">
                 </div>
-                <img id="sheetImage" src="" alt="Building Image">
+                <div class="sheet-image-box">
+                    <div class="sheet-placeholder-text">
+                        <i class="fa-solid fa-image"></i>
+                        <span>Photo 2</span>
+                    </div>
+                    <img id="sheetImage2" src="" alt="Building Photo 2">
+                </div>
+                <div class="sheet-image-box">
+                    <div class="sheet-placeholder-text">
+                        <i class="fa-solid fa-image"></i>
+                        <span>Photo 3</span>
+                    </div>
+                    <img id="sheetImage3" src="" alt="Building Photo 3">
+                </div>
             </div>
 
             <p class="sheet-description" id="sheetDescription">
@@ -222,17 +236,20 @@
         let userMarker = null;
         let accuracyCircle = null;
 
-        // --- Swipeable Google Maps Style Bottom Sheet Logic ---
+        // --- Dynamic Swipeable Bottom Sheet Logic ---
         const bottomSheet = document.getElementById('bottomSheet');
         const bottomSheetOverlay = document.getElementById('bottomSheetOverlay');
-        const closeBottomSheetBtn = document.getElementById('closeBottomSheetBtn');
         const sheetDragArea = document.getElementById('sheetDragArea');
         const sheetContent = document.getElementById('sheetContent');
         const goToDestinationBtn = document.getElementById('goToDestinationBtn');
         const sheetTitle = document.getElementById('sheetTitle');
         const sheetDescription = document.getElementById('sheetDescription');
-        const sheetImage = document.getElementById('sheetImage');
-        const sheetPlaceholderText = document.getElementById('sheetPlaceholderText');
+
+        const sheetImgElements = [
+            document.getElementById('sheetImage1'),
+            document.getElementById('sheetImage2'),
+            document.getElementById('sheetImage3')
+        ];
 
         let activeDestinationCoords = null;
         let currentSnapState = 'closed';
@@ -241,47 +258,57 @@
         let initialTransformY = 0;
         let isDragging = false;
 
+        const PEEK_HEIGHT = 160;
+
+        function getPeekOffsetY() {
+            return window.innerHeight - PEEK_HEIGHT;
+        }
+
+        function snapToState(state) {
+            currentSnapState = state;
+            bottomSheet.classList.remove('dragging');
+            bottomSheet.style.transition = 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)';
+
+            if (state === 'expanded') {
+                bottomSheet.style.transform = 'translateY(0px)';
+                bottomSheetOverlay.classList.add('active');
+            } else if (state === 'peek') {
+                const peekOffset = getPeekOffsetY();
+                bottomSheet.style.transform = `translateY(${peekOffset}px)`;
+                bottomSheetOverlay.classList.remove('active');
+            } else {
+                bottomSheet.style.transform = 'translateY(100%)';
+                bottomSheetOverlay.classList.remove('active');
+            }
+        }
+
         function openBottomSheet(data) {
             sheetTitle.textContent = data.title || "Location Details";
             sheetDescription.textContent = data.description || "No description available.";
             activeDestinationCoords = data.coords || null;
 
-            if (data.imageUrl) {
-                sheetImage.src = data.imageUrl;
-                sheetImage.style.display = "block";
-                sheetPlaceholderText.style.display = "none";
-            } else {
-                sheetImage.src = "";
-                sheetImage.style.display = "none";
-                sheetPlaceholderText.style.display = "flex";
-            }
+            const imageUrls = Array.isArray(data.imageUrls) ? data.imageUrls : (data.imageUrl ? [data.imageUrl] : []);
+
+            sheetImgElements.forEach((imgEl, idx) => {
+                const box = imgEl.parentElement;
+                const placeholder = box.querySelector('.sheet-placeholder-text');
+
+                if (imageUrls[idx]) {
+                    imgEl.src = imageUrls[idx];
+                    imgEl.style.display = 'block';
+                    if (placeholder) placeholder.style.display = 'none';
+                } else {
+                    imgEl.src = '';
+                    imgEl.style.display = 'none';
+                    if (placeholder) placeholder.style.display = 'flex';
+                }
+            });
 
             snapToState('peek');
         }
 
         function closeBottomSheet() {
             snapToState('closed');
-        }
-
-        function getPeekOffsetY() {
-            const sheetHeight = bottomSheet.offsetHeight;
-            return sheetHeight - 220;
-        }
-
-        function snapToState(state) {
-            currentSnapState = state;
-            bottomSheet.classList.remove('dragging', 'peek', 'expanded');
-            bottomSheet.style.transform = '';
-
-            if (state === 'expanded') {
-                bottomSheet.classList.add('expanded');
-                bottomSheetOverlay.classList.add('active');
-            } else if (state === 'peek') {
-                bottomSheet.classList.add('peek');
-                bottomSheetOverlay.classList.remove('active');
-            } else {
-                bottomSheetOverlay.classList.remove('active');
-            }
         }
 
         function onTouchStart(e) {
@@ -293,9 +320,12 @@
                     initialTransformY = 0;
                 } else if (currentSnapState === 'peek') {
                     initialTransformY = getPeekOffsetY();
+                } else {
+                    initialTransformY = window.innerHeight;
                 }
 
                 bottomSheet.classList.add('dragging');
+                bottomSheet.style.transition = 'none';
             }
         }
 
@@ -317,18 +347,24 @@
             const deltaY = currentY - startY;
             const peekOffset = getPeekOffsetY();
 
-            if (Math.abs(deltaY) > 50) {
-                if (deltaY < 0) {
+            if (currentSnapState === 'peek') {
+                if (deltaY < -60) {
                     snapToState('expanded');
+                } else if (deltaY > 60) {
+                    snapToState('closed');
                 } else {
-                    if (currentSnapState === 'expanded') snapToState('peek');
-                    else if (currentSnapState === 'peek') snapToState('closed');
+                    snapToState('peek');
                 }
-            } else { 
-                const currentPx = initialTransformY + deltaY;
-                if (currentPx < peekOffset / 2) {
+            } else if (currentSnapState === 'expanded') {
+                if (deltaY > 120) {
+                    snapToState('closed');
+                } else if (deltaY > 50) {
+                    snapToState('peek');
+                } else {
                     snapToState('expanded');
-                } else if (currentPx < peekOffset + 100) {
+                }
+            } else {
+                if (deltaY < -100) {
                     snapToState('peek');
                 } else {
                     snapToState('closed');
@@ -340,7 +376,6 @@
         bottomSheet.addEventListener('touchmove', onTouchMove, { passive: true });
         bottomSheet.addEventListener('touchend', onTouchEnd);
 
-        closeBottomSheetBtn.addEventListener('click', closeBottomSheet);
         bottomSheetOverlay.addEventListener('click', closeBottomSheet);
 
         goToDestinationBtn.addEventListener('click', () => {
@@ -862,14 +897,14 @@
                         openBottomSheet({
                             title: "DPRO Building",
                             description: "Olivarez College DPRO facility. Department offices and official functions.",
-                            imageUrl: "",
+                            imageUrls: [],
                             coords: center
                         });
                     } else {
                         openBottomSheet({
                             title: buildingName,
                             description: `Building ID: ${buildingId}`,
-                            imageUrl: "",
+                            imageUrls: [],
                             coords: center
                         });
                     }
@@ -1177,7 +1212,7 @@
             `;
             infoModal.classList.add('active');
         });
-        // asd
+
         closeInfoBtn.addEventListener('click', () => {
             infoModal.classList.remove('active');
         });

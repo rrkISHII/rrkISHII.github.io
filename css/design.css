@@ -129,10 +129,18 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    transition: background-color 0.2s;
 }
 
 .search-btn:hover {
     color: #0B793D;
+}
+
+.search-btn:active {
+    background-color: #f0f0f0;
 }
 
 .search-input {
@@ -142,6 +150,66 @@ html, body {
     font-size: 15px;
     background: transparent;
     color: #333;
+}
+
+/* Google Maps Style Inline Search Dropdown Container */
+.search-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    max-height: 60vh;
+    overflow-y: auto;
+    z-index: 1001;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s ease;
+}
+
+.search-dropdown.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.buildings-list {
+    list-style: none;
+    padding: 8px;
+    margin: 0;
+}
+
+.building-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    font-size: 15px;
+    color: #333;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 10px;
+    transition: background 0.2s;
+}
+
+.building-item i {
+    color: #0B793D;
+    font-size: 16px;
+}
+
+.building-item:active,
+.building-item:hover {
+    background: #f0f7f3;
+}
+
+.no-building-found {
+    padding: 16px;
+    text-align: center;
+    color: #888;
+    font-size: 14px;
 }
 
 /* Bottom Right Floating Action Button (My Location) */
@@ -696,6 +764,20 @@ body.dark-theme .search-input {
 
 body.dark-theme .search-btn {
     color: #aaa;
+}
+
+body.dark-theme .search-dropdown {
+    background: #1e1e1e;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+body.dark-theme .building-item {
+    color: #e0e0e0;
+}
+
+body.dark-theme .building-item:active,
+body.dark-theme .building-item:hover {
+    background: #2d3e33;
 }
 
 body.dark-theme .my-location-btn {

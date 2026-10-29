@@ -35,10 +35,16 @@
             <i class="fa-solid fa-bars"></i>
         </button>
         <div class="search-container">
-            <input type="text" class="search-input" id="searchInput" placeholder="Search location..." aria-label="Search map">
+            <input type="text" class="search-input" id="searchInput" placeholder="Search location..." aria-label="Search map" autocomplete="off">
             <button class="search-btn" id="searchBtn" aria-label="Search">
-                <i class="fa-solid fa-magnifying-glass"></i>
+                <i class="fa-solid fa-magnifying-glass" id="searchIcon"></i>
             </button>
+        </div>
+        <!-- Google Maps Style Inline Search Dropdown -->
+        <div class="search-dropdown" id="searchDropdown">
+            <ul class="buildings-list" id="buildingsList">
+                <!-- Populated dynamically alphabetically -->
+            </ul>
         </div>
     </header>
 
@@ -220,11 +226,12 @@
             e.preventDefault();
         });
 
-        // Close bottom sheet when tapping empty map space
+        // Close bottom sheet and search dropdown when tapping empty map space
         oc_map.on('click', function(e) {
             if (currentSnapState !== 'closed') {
                 closeBottomSheet();
             }
+            document.getElementById('searchDropdown').classList.remove('active');
         });
 
         // Fixed Basemaps
@@ -246,6 +253,9 @@
         let userMarker = null;
         let accuracyCircle = null;
         let routeLayer = null;
+
+        // Dynamic Building Records Registry
+        let campusBuildings = [];
 
         // --- Dynamic Swipeable Bottom Sheet Logic ---
         const bottomSheet = document.getElementById('bottomSheet');
@@ -299,7 +309,6 @@
             sheetDescription.textContent = data.description || "No description available.";
             activeBuildingData = data;
 
-            // Render entrances list if available
             entrancesContainer.innerHTML = '';
             if (data.entrances && data.entrances.length > 0) {
                 let html = '<h4>Building Entrances:</h4><ul style="list-style:none; padding:0; margin-top:5px;">';
@@ -411,7 +420,7 @@
                     const ent = activeBuildingData.entrances[0];
                     routeToEntrance(ent.coords[1], ent.coords[0], ent.name);
                 } else {
-                    snapToState('expanded'); // Expand bottom sheet to pick entrance
+                    snapToState('expanded');
                 }
             } else if (activeBuildingData.coords) {
                 routeToEntrance(activeBuildingData.coords.lat, activeBuildingData.coords.lng, "Building Center");
@@ -430,11 +439,6 @@
             const userLatLng = userMarker.getLatLng();
             closeBottomSheet();
 
-            // Stadia Maps Valhalla routing API endpoint (Requires free API key or public demo key format)
-            // Note: Replace with your actual Stadia Maps API key if required.
-            const url = `https://api.stadiamaps.com/route/v1?api_key=YOUR-STADIA-API-KEY`;
-
-            // Alternatively, using OSRM or Valhalla public endpoint pattern if using custom proxy/key:
             const valhallaPayload = {
                 locations: [
                     { lat: userLatLng.lat, lon: userLatLng.lng },
@@ -444,7 +448,6 @@
                 directions_options: { units: "metric" }
             };
 
-            // Fetching route from Valhalla API
             fetch("https://valhalla.openstreetmap.de/route", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -469,7 +472,6 @@
             });
         }
 
-        // Valhalla polyline decoder helper
         function decodePolyline(str, precision = 6) {
             let index = 0, lat = 0, lng = 0, coordinates = [], shift = 0, result = 0, byte = null, latitude_change, longitude_change, factor = Math.pow(10, precision);
             while (index < str.length) {
@@ -1004,16 +1006,12 @@
                 "type": "Polygon",
                 "coordinates": [
                   [
-                    [120.995958, 14.4799],
-                    [120.995915, 14.479866],
-                    [120.995875, 14.47982],
-                    [120.995839, 14.479773],
                     [120.995813, 14.479721],
-                    [120.99575, 14.479611],
                     [120.995695, 14.47949],
                     [120.996063, 14.479304],
                     [120.996322, 14.479774],
-                    [120.995958, 14.4799]
+                    [120.995958, 14.4799],
+                    [120.995813, 14.479721]
                   ]
                 ]
               },
@@ -1079,17 +1077,24 @@
                 let buildingId = feature.properties[propKey] || "";
                 let entrances = feature.properties.entrances || [];
 
+                const buildingObj = {
+                    title: buildingName,
+                    description: `Building ID: ${buildingId}`,
+                    imageUrls: [],
+                    coords: center,
+                    entrances: entrances
+                };
+
+                campusBuildings.push(buildingObj);
+
                 const handleBuildingClick = (e) => {
                     if (e && e.originalEvent) {
                         L.DomEvent.stopPropagation(e);
                     }
-                    openBottomSheet({
-                        title: buildingName,
-                        description: `Building ID: ${buildingId}`,
-                        imageUrls: [],
-                        coords: center,
-                        entrances: entrances
-                    });
+                    if (center) {
+                        oc_map.flyTo([center.lat, center.lng], 19, { animate: true, duration: 1.2 });
+                    }
+                    openBottomSheet(buildingObj);
                 };
 
                 layer.on('click', handleBuildingClick);
@@ -1125,6 +1130,95 @@
                 }
             }
         }).addTo(oc_map);
+
+        // Sort Campus Buildings Alphabetically
+        campusBuildings.sort((a, b) => a.title.localeCompare(b.title));
+
+        // --- Google Maps Style Inline Search Dropdown Logic ---
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const searchIcon = document.getElementById('searchIcon');
+        const searchDropdown = document.getElementById('searchDropdown');
+        const buildingsList = document.getElementById('buildingsList');
+
+        function renderBuildingsDropdown(filterText = '') {
+            buildingsList.innerHTML = '';
+            const filtered = campusBuildings.filter(b => b.title.toLowerCase().includes(filterText.toLowerCase()));
+
+            if (filtered.length === 0) {
+                buildingsList.innerHTML = `<li class="no-building-found">No building matching "${filterText}"</li>`;
+                return;
+            }
+
+            filtered.forEach(building => {
+                const li = document.createElement('li');
+                li.className = 'building-item';
+                li.innerHTML = `<i class="fa-solid fa-building"></i> <span>${building.title}</span>`;
+                li.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectBuilding(building);
+                });
+                buildingsList.appendChild(li);
+            });
+        }
+
+        function selectBuilding(building) {
+            searchDropdown.classList.remove('active');
+            searchInput.value = building.title;
+            updateSearchIconState();
+
+            if (building.coords) {
+                oc_map.flyTo([building.coords.lat, building.coords.lng], 19, { animate: true, duration: 1.2 });
+            }
+            openBottomSheet(building);
+        }
+
+        function updateSearchIconState() {
+            if (searchInput.value.trim().length > 0) {
+                searchIcon.className = 'fa-solid fa-xmark';
+                searchBtn.setAttribute('aria-label', 'Clear search');
+            } else {
+                searchIcon.className = 'fa-solid fa-magnifying-glass';
+                searchBtn.setAttribute('aria-label', 'Search');
+            }
+        }
+
+        searchInput.addEventListener('focus', () => {
+            renderBuildingsDropdown(searchInput.value.trim());
+            searchDropdown.classList.add('active');
+        });
+
+        searchInput.addEventListener('input', () => {
+            updateSearchIconState();
+            renderBuildingsDropdown(searchInput.value.trim());
+            searchDropdown.classList.add('active');
+        });
+
+        searchBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (searchInput.value.trim().length > 0) {
+                searchInput.value = '';
+                updateSearchIconState();
+                renderBuildingsDropdown('');
+                searchDropdown.classList.add('active');
+                searchInput.focus();
+            } else {
+                if (searchDropdown.classList.contains('active')) {
+                    searchDropdown.classList.remove('active');
+                } else {
+                    renderBuildingsDropdown('');
+                    searchDropdown.classList.add('active');
+                    searchInput.focus();
+                }
+            }
+        });
+
+        // Close dropdown when clicking outside header search bar
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.app-header')) {
+                searchDropdown.classList.remove('active');
+            }
+        });
 
         // --- Inverted Polygon Mask Overlay (Dimming Outside Area) ---
         let maskPolygon = null;
@@ -1263,45 +1357,6 @@
                 }
             }
             closeMenu();
-        });
-
-        // Location Search
-        const searchInput = document.getElementById('searchInput');
-        const searchBtn = document.getElementById('searchBtn');
-
-        function performSearch() {
-            const query = searchInput.value.trim();
-            if (!query) return;
-
-            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data && data.length > 0) {
-                        const lat = parseFloat(data[0].lat);
-                        const lon = parseFloat(data[0].lon);
-
-                        oc_map.setView([lat, lon], 16);
-
-                        if (searchMarker) {
-                            oc_map.removeLayer(searchMarker);
-                        }
-
-                        searchMarker = L.marker([lat, lon]).addTo(oc_map)
-                            .bindPopup(`<b>${data[0].display_name}</b>`)
-                            .openPopup();
-                    } else {
-                        alert('Location not found. Please try another search term.');
-                    }
-                })
-                .catch(err => {
-                    console.error('Search error:', err);
-                    alert('Error searching for location.');
-                });
-        }
-
-        searchBtn.addEventListener('click', performSearch);
-        searchInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') performSearch();
         });
 
         // Geolocation Logic

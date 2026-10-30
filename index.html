@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Olivarez Navigation Portal</title>
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/welcome.css">
 </head>
 <body>
@@ -11,7 +13,7 @@
     <div class="welcome-container">
         <!-- Top Heading -->
         <div class="heading-group">
-            <h2 class="sub-title">WELCOME</h2>
+            <h2 class="sub-title">WELCOME TO</h2>
             <h1 class="main-title">OLIVAREZ</h1>
         </div>
 
@@ -29,36 +31,36 @@
         <button type="button" class="enter-btn" id="enterBtn">ENTER</button>
     </div>
 
-    <!-- Location Permission Popup Modal -->
+    <!-- Location Permission Popup Modal (Styled like main_page.html modals) -->
     <div class="modal-overlay" id="locationModal">
-        <div class="modal-card">
-            <h2 class="modal-header-title">WELCOME OLIVAREZ</h2>
+        <div class="feedback-window">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-location-dot"></i> WELCOME TO OLIVAREZ</h3>
+                <button class="modal-close-btn" id="closeModalX" aria-label="Close modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
             
-            <div class="modal-content-box">
-                <p class="modal-intro">
-                    For a better experience, your device will need to use <strong>Location Accuracy</strong>
+            <div class="info-modal-body">
+                <p class="modal-intro" style="margin-bottom: 12px;">
+                    For a better experience, your device will need to use <strong>Location Accuracy</strong>.
                 </p>
-                <p class="modal-sub-intro">The following settings should be on:</p>
+                <p class="modal-sub-intro" style="margin-bottom: 8px; font-weight: 600;">The following settings should be on:</p>
                 
-                <div class="setting-item">
-                    <span class="location-icon">📍</span> <strong>Device Location</strong>
+                <div class="setting-item" style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-crosshairs" style="color: #0B793D;"></i> <strong>Device Location</strong>
                 </div>
 
-                <p class="modal-description">
-                    <strong>Location Accuracy</strong>, which provides more accurate location for apps and services. To do this Google periodically processes information about device sensors and wireless signals from your device to crowdsource wireless signals locations. These are used without identifying you to improve location accuracy and location-based services and to improve provide and maintain Google's services based on Google's and third parties legitimate interest to serve users needs.
+                <p class="modal-description" style="margin-bottom: 14px; font-size: 13px; color: #555; line-height: 1.5;">
+                    <strong>Location Accuracy</strong> provides a more accurate location for apps and services. Google periodically processes information about device sensors and wireless signals to improve location accuracy and location-based features.
                 </p>
 
-                <p class="modal-footer-note">
-                    You can change this at any time in Location Setting
+                <p class="modal-footer-note" style="font-size: 12px; text-decoration: underline; color: #666; margin-bottom: 20px;">
+                    You can change this at any time in your Location Settings.
                 </p>
             </div>
 
-            <div class="modal-actions">
-                <div></div> <!-- Empty space wrapper for alignment -->
-                <div class="right-buttons">
-                    <button class="text-btn" id="noThanksBtn">NO THANKS</button>
-                    <button class="text-btn turn-on" id="turnOnBtn">TURN ON</button>
-                </div>
+            <div class="modal-actions" style="display: flex; justify-content: flex-end; gap: 12px;">
+                <button class="text-btn" id="noThanksBtn" style="background: none; border: none; font-size: 14px; font-weight: 600; cursor: pointer; color: #666; padding: 10px 16px;">NO THANKS</button>
+                <button class="send-btn" id="turnOnBtn" style="width: auto; padding: 10px 20px; margin-top: 0;">TURN ON</button>
             </div>
         </div>
     </div>
@@ -66,12 +68,18 @@
     <script>
         const enterBtn = document.getElementById('enterBtn');
         const locationModal = document.getElementById('locationModal');
+        const closeModalX = document.getElementById('closeModalX');
         const noThanksBtn = document.getElementById('noThanksBtn');
         const turnOnBtn = document.getElementById('turnOnBtn');
 
         // Show popup when ENTER is clicked
         enterBtn.addEventListener('click', () => {
             locationModal.classList.add('active');
+        });
+
+        // Close popup on X click
+        closeModalX.addEventListener('click', () => {
+            locationModal.classList.remove('active');
         });
 
         // Proceed to main page on NO THANKS

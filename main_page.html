@@ -139,10 +139,18 @@
     <!-- Map Container -->
     <div id="oc_map"></div>
 
-    <!-- Bottom Right Geolocation Floating Button -->
-    <button class="my-location-btn" id="myLocationBtn" aria-label="Go to my location" title="Go to my location">
-        <i class="fa-solid fa-crosshairs"></i>
-    </button>
+    <!-- Bottom Right Controls Container -->
+    <div class="map-controls-container">
+        <!-- Building Labels Toggle Button -->
+        <button class="map-control-btn" id="toggleLabelsBtn" aria-label="Toggle building labels" title="Toggle building labels">
+            <i class="fa-solid fa-font"></i>
+        </button>
+
+        <!-- Geolocation Floating Button -->
+        <button class="map-control-btn my-location-btn" id="myLocationBtn" aria-label="Go to my location" title="Go to my location">
+            <i class="fa-solid fa-crosshairs"></i>
+        </button>
+    </div>
 
     <!-- Google Maps Style Swipeable Bottom Sheet -->
     <div class="bottom-sheet-overlay" id="bottomSheetOverlay"></div>
@@ -254,8 +262,10 @@
         let accuracyCircle = null;
         let routeLayer = null;
 
-        // Dynamic Building Records Registry
+        // Dynamic Building Records Registry & Label State
         let campusBuildings = [];
+        let buildingMarkers = [];
+        let labelsVisible = false;
 
         // --- Dynamic Swipeable Bottom Sheet Logic ---
         const bottomSheet = document.getElementById('bottomSheet');
@@ -1113,13 +1123,14 @@
                         iconColor = "#2196F3";
                     } 
 
+                    // Building Label Marker (Label text hidden by default on initial page load)
                     const customIcon = L.divIcon({
                         className: 'building-label-marker',
                         html: `<div class="map-label-pill">
                                    <div class="map-label-icon" style="color: ${iconColor};">
                                        <i class="${iconClass}"></i>
                                    </div>
-                                   <span class="map-label-text">${buildingName}</span>
+                                   <span class="map-label-text hide-label">${buildingName}</span>
                                </div>`,
                         iconSize: null,
                         iconAnchor: [15, 15]
@@ -1127,12 +1138,29 @@
 
                     const marker = L.marker(center, { icon: customIcon }).addTo(oc_map);
                     marker.on('click', handleBuildingClick);
+                    buildingMarkers.push(marker);
                 }
             }
         }).addTo(oc_map);
 
         // Sort Campus Buildings Alphabetically
         campusBuildings.sort((a, b) => a.title.localeCompare(b.title));
+
+        // --- Toggle Building Labels On and Off ---
+        const toggleLabelsBtn = document.getElementById('toggleLabelsBtn');
+
+        toggleLabelsBtn.addEventListener('click', () => {
+            labelsVisible = !labelsVisible;
+            toggleLabelsBtn.classList.toggle('active', labelsVisible);
+
+            document.querySelectorAll('.map-label-text').forEach(labelEl => {
+                if (labelsVisible) {
+                    labelEl.classList.remove('hide-label');
+                } else {
+                    labelEl.classList.add('hide-label');
+                }
+            });
+        });
 
         // --- Google Maps Style Inline Search Dropdown Logic ---
         const searchInput = document.getElementById('searchInput');
@@ -1440,7 +1468,6 @@
         closeInfoBtn.addEventListener('click', () => {
             infoModal.classList.remove('active');
         });
-        // asdas
     </script>
 </body>
 </html>

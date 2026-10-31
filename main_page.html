@@ -123,7 +123,7 @@
         </div>
     </div>
 
-    <!-- Generic Info Modal for About & Attributions -->
+    <!-- Generic Info Modal for About, Attributions & Building-to-Building Start Selection -->
     <div class="modal-overlay" id="infoModal">
         <div class="feedback-window">
             <div class="modal-header">
@@ -439,19 +439,11 @@
             }
         });
 
-        // --- Stadia Maps Routing Integration ---
-        function routeToEntrance(destLat, destLng, entranceName) {
-            if (!userMarker) {
-                alert("Please tap the 'My Location' (crosshairs) button first so we know where you are starting from!");
-                return;
-            }
-
-            const userLatLng = userMarker.getLatLng();
-            closeBottomSheet();
-
+        // --- Routing Engine (Handles Mode 1: Location OFF / Building-to-Building & Mode 2: Location ON / GPS Live) ---
+        function executeValhallaRouting(startLat, startLng, destLat, destLng) {
             const valhallaPayload = {
                 locations: [
-                    { lat: userLatLng.lat, lon: userLatLng.lng },
+                    { lat: startLat, lon: startLng },
                     { lat: destLat, lon: destLng }
                 ],
                 costing: "pedestrian",
@@ -481,6 +473,46 @@
                 alert("Routing service unavailable. Please check connection.");
             });
         }
+
+        function routeToEntrance(destLat, destLng, entranceName) {
+            closeBottomSheet();
+
+            // Mode 2: Location ON (Live GPS active)
+            if (userMarker) {
+                const userLatLng = userMarker.getLatLng();
+                executeValhallaRouting(userLatLng.lat, userLatLng.lng, destLat, destLng);
+            } 
+            // Mode 1: Location OFF (Building-to-Building selection)
+            else {
+                showBuildingToBuildingSelector(destLat, destLng);
+            }
+        }
+
+        function showBuildingToBuildingSelector(destLat, destLng) {
+            infoModalTitle.innerHTML = `<i class="fa-solid fa-person-walking"></i> Select Starting Building`;
+            
+            let listHtml = `<p style="margin-bottom: 12px; font-size:13px; color:#666;">Location is turned off. Choose a starting building for building-to-building routing:</p>`;
+            listHtml += `<ul class="info-list" style="max-height: 50vh; overflow-y: auto;">`;
+            
+            campusBuildings.forEach(b => {
+                let startLat = b.coords ? b.coords.lat : 0;
+                let startLng = b.coords ? b.coords.lng : 0;
+                listHtml += `<li style="background:#f8f9fa; padding:10px; border-radius:8px; margin-bottom:8px; cursor:pointer;" onclick="selectStartBuildingAndRoute(${startLat}, ${startLng}, '${b.title.replace(/'/g, "\\'")}')">
+                    <i class="fa-solid fa-building" style="color:#0B793D;"></i>
+                    <span><strong>${b.title}</strong></span>
+                </li>`;
+            });
+            listHtml += `</ul>`;
+
+            infoModalBody.innerHTML = listHtml;
+            infoModal.classList.add('active');
+        }
+
+        window.selectStartBuildingAndRoute = function(startLat, startLng, startName) {
+            infoModal.classList.remove('active');
+            // Use center or first entrance of starting building as origin
+            executeValhallaRouting(startLat, startLng, activeBuildingData.coords.lat, activeBuildingData.coords.lng);
+        };
 
         function decodePolyline(str, precision = 6) {
             let index = 0, lat = 0, lng = 0, coordinates = [], shift = 0, result = 0, byte = null, latitude_change, longitude_change, factor = Math.pow(10, precision);
@@ -1123,7 +1155,6 @@
                         iconColor = "#2196F3";
                     } 
 
-                    // Building Label Marker (Label text hidden by default on initial page load)
                     const customIcon = L.divIcon({
                         className: 'building-label-marker',
                         html: `<div class="map-label-pill">
@@ -1241,7 +1272,6 @@
             }
         });
 
-        // Close dropdown when clicking outside header search bar
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.app-header')) {
                 searchDropdown.classList.remove('active');
@@ -1309,7 +1339,6 @@
             feedbackModal.classList.remove('active');
         });
 
-        // EmailJS Submission
         feedbackForm.addEventListener('submit', (e) => {
             e.preventDefault();
 

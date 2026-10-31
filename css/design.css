@@ -1,5 +1,4 @@
 /* Global Mobile Resets */
-
 *{
 box-sizing: border-box;
 margin: 0;
@@ -234,7 +233,7 @@ gap: 10px;
 align-items: center;
 }
 
-/* Shared Map Control Buttons Styling (Compact 42px) */
+/* Shared Map Control Buttons Styling (Compact 30px) */
 .map-control-btn {
 width: 30px;
 height: 30px;
@@ -808,7 +807,6 @@ body.dark-theme .map-control-btn {
 background-color: #242424;
 color: #4CAF50;
 box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
-
 }
 
 body.dark-theme .map-control-btn:active {
@@ -869,4 +867,4 @@ color: #ffffff;
 
 body.dark-theme .leaflet-control-rotate .leaflet-control-rotate-arrow {
 filter: invert(100%);
-}
+}   

@@ -123,7 +123,7 @@
         </div>
     </div>
 
-    <!-- Generic Info Modal for About, Attributions & Building-to-Building Start Selection -->
+    <!-- Generic Info Modal for About, Attributions & Building Selection -->
     <div class="modal-overlay" id="infoModal">
         <div class="feedback-window">
             <div class="modal-header">
@@ -211,7 +211,7 @@
 
     <!-- JavaScript Logic -->
     <script>
-        // Initialize Map with Rotation Support & Compass hidden at 0° bearing
+        // Initialize Map
         var oc_map = L.map('oc_map', {
             zoomControl: false,
             rotate: true,                 
@@ -234,7 +234,6 @@
             e.preventDefault();
         });
 
-        // Close bottom sheet and search dropdown when tapping empty map space
         oc_map.on('click', function(e) {
             if (currentSnapState !== 'closed') {
                 closeBottomSheet();
@@ -262,12 +261,11 @@
         let accuracyCircle = null;
         let routeLayer = null;
 
-        // Dynamic Building Records Registry & Label State
         let campusBuildings = [];
         let buildingMarkers = [];
         let labelsVisible = false;
 
-        // --- Dynamic Swipeable Bottom Sheet Logic ---
+        // Dynamic Bottom Sheet Logic
         const bottomSheet = document.getElementById('bottomSheet');
         const bottomSheetOverlay = document.getElementById('bottomSheetOverlay');
         const sheetDragArea = document.getElementById('sheetDragArea');
@@ -439,7 +437,7 @@
             }
         });
 
-        // --- Routing Engine (Handles Mode 1: Location OFF / Building-to-Building & Mode 2: Location ON / GPS Live) ---
+        // --- Routing Engine (Mode 1: Location OFF / Building-to-Building & Mode 2: Location ON / GPS Live) ---
         function executeValhallaRouting(startLat, startLng, destLat, destLng) {
             const valhallaPayload = {
                 locations: [
@@ -477,13 +475,10 @@
         function routeToEntrance(destLat, destLng, entranceName) {
             closeBottomSheet();
 
-            // Mode 2: Location ON (Live GPS active)
             if (userMarker) {
                 const userLatLng = userMarker.getLatLng();
                 executeValhallaRouting(userLatLng.lat, userLatLng.lng, destLat, destLng);
-            } 
-            // Mode 1: Location OFF (Building-to-Building selection)
-            else {
+            } else {
                 showBuildingToBuildingSelector(destLat, destLng);
             }
         }
@@ -510,7 +505,6 @@
 
         window.selectStartBuildingAndRoute = function(startLat, startLng, startName) {
             infoModal.classList.remove('active');
-            // Use center or first entrance of starting building as origin
             executeValhallaRouting(startLat, startLng, activeBuildingData.coords.lat, activeBuildingData.coords.lng);
         };
 
@@ -537,7 +531,7 @@
             return coordinates;
         }
 
-        // --- GeoJSON Data Integration ---
+        // --- GeoJSON Integration ---
         const geojsonData = {
           "type": "FeatureCollection",
           "features": [
@@ -928,7 +922,7 @@
               "properties": {
                 "ELO BUILDING": "OC_ELO",
                 "entrances": [
-                    { "name": "entrance1", "coords": [120.9962516, 14.4789395] },
+                    { "name": "entrance1", "coords": [120.9962516, 14.47889395] },
                     { "name": "entrance2", "coords": [120.9965141, 14.4788727] }
                 ]
               },
@@ -1174,10 +1168,29 @@
             }
         }).addTo(oc_map);
 
-        // Sort Campus Buildings Alphabetically
         campusBuildings.sort((a, b) => a.title.localeCompare(b.title));
 
-        // --- Toggle Building Labels On and Off ---
+        // --- Automatic QR Code Destination Handler ---
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const destParam = urlParams.get('destination');
+            
+            if (destParam) {
+                const targetName = decodeURIComponent(destParam).trim().toLowerCase();
+                const foundBuilding = campusBuildings.find(b => b.title.trim().toLowerCase() === targetName);
+
+                if (foundBuilding) {
+                    setTimeout(() => {
+                        if (foundBuilding.coords) {
+                            oc_map.flyTo([foundBuilding.coords.lat, foundBuilding.coords.lng], 19, { animate: true, duration: 1.2 });
+                        }
+                        openBottomSheet(foundBuilding);
+                    }, 600);
+                }
+            }
+        });
+
+        // Toggle Labels
         const toggleLabelsBtn = document.getElementById('toggleLabelsBtn');
 
         toggleLabelsBtn.addEventListener('click', () => {
@@ -1193,7 +1206,7 @@
             });
         });
 
-        // --- Google Maps Style Inline Search Dropdown Logic ---
+        // Inline Search Dropdown Logic
         const searchInput = document.getElementById('searchInput');
         const searchBtn = document.getElementById('searchBtn');
         const searchIcon = document.getElementById('searchIcon');
@@ -1278,7 +1291,7 @@
             }
         });
 
-        // --- Inverted Polygon Mask Overlay (Dimming Outside Area) ---
+        // Inverted Polygon Mask Overlay
         let maskPolygon = null;
         const perimeterFeature = geojsonData.features.find(f => f.properties && f.properties.perimeter);
 
@@ -1378,7 +1391,7 @@
             successModal.classList.remove('active');
         });
 
-        // Light / Dark Theme Logic
+        // Theme Toggle
         const themeToggleBtn = document.getElementById('themeToggleBtn');
         const themeIcon = document.getElementById('themeIcon');
         const themeLabel = document.getElementById('themeLabel');
@@ -1416,7 +1429,7 @@
             closeMenu();
         });
 
-        // Geolocation Logic
+        // Geolocation
         function locateUser() {
             if (!('geolocation' in navigator)) {
                 alert("Geolocation is not supported by your browser.");

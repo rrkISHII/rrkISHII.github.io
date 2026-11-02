@@ -970,8 +970,8 @@
             }
 
             clearRoute();
-            routeCasing = L.polyline(route.path, { color: '#ffffff', weight: 10, opacity: 0.9, lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(oc_map);
-            routeLine = L.polyline(route.path, { color: '#0B793D', weight: 6, opacity: 1, lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(oc_map);
+            routeCasing = L.polyline(route.path, { color: '#0B793D', weight: 10, opacity: 0.4, lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(oc_map);
+            routeLine = L.polyline(route.path, { color: '#0B793D', weight: 2, opacity: 1, lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(oc_map);
             routeTarget = target;
 
             const metres = Math.round(route.distance);

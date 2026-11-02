@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
 /* ==========================================================
    Design tokens (light theme)
    ========================================================== */
@@ -12,11 +14,11 @@
     --surface-muted: #f0f4f1;
     --surface-field: #ffffff;
 
-    --text: #333333;
-    --text-strong: #222222;
-    --text-muted: #595959;
-    --text-faint: #6b6b6b;
-    --text-label: #444444;
+    --text: #2c2c2c;
+    --text-strong: #111111;
+    --text-muted: #555555;
+    --text-faint: #777777;
+    --text-label: #333333;
     --text-on-green: #ffffff;
 
     --accent: var(--green);        /* green for icons/text on surfaces */
@@ -54,11 +56,11 @@ body.dark-theme {
     --surface-muted: #333333;
     --surface-field: #2a2a2a;
 
-    --text: #e0e0e0;
+    --text: #eaeaea;
     --text-strong: #ffffff;
-    --text-muted: #b5b5b5;
-    --text-faint: #a0a0a0;
-    --text-label: #cccccc;
+    --text-muted: #cccccc;
+    --text-faint: #aaaaaa;
+    --text-label: #dddddd;
 
     --accent: #4CAF50;
     --accent-on-fill: #121212;
@@ -72,7 +74,7 @@ body.dark-theme {
 }
 
 /* ==========================================================
-   Global mobile resets
+   Global mobile resets & Typography
    ========================================================== */
 * {
     box-sizing: border-box;
@@ -85,9 +87,13 @@ html, body {
     width: 100%;
     height: 100%;
     overflow: hidden;
-    overscroll-behavior: none; /* no pull-to-refresh while dragging the sheet */
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    overscroll-behavior: none;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
     background-color: var(--bg-page);
+    color: var(--text);
 }
 
 button {
@@ -95,7 +101,13 @@ button {
     touch-action: manipulation;
 }
 
-/* Visible keyboard focus (replaces blanket outline: none) */
+/* High-contrast, punchy heading styles */
+h2, h3, .drawer-header h2, .sheet-header h3, .success-popup h3, .modal-header h3 {
+    letter-spacing: -0.03em;
+    font-weight: 800;
+}
+
+/* Visible keyboard focus */
 :focus-visible {
     outline: 3px solid var(--accent);
     outline-offset: 2px;
@@ -118,7 +130,6 @@ button {
     z-index: var(--z-map);
 }
 
-/* Smooth rotation, but never while panning/zooming (it makes the map trail the finger) */
 .leaflet-map-pane {
     transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
     will-change: transform;
@@ -142,7 +153,6 @@ body.dark-theme .leaflet-control-rotate .leaflet-control-rotate-arrow {
     filter: invert(100%);
 }
 
-/* Keep Leaflet's bottom controls (attribution) above the peeking sheet */
 .leaflet-bottom {
     transition: bottom 0.4s ease;
 }
@@ -168,7 +178,7 @@ body.sheet-peek .leaflet-bottom {
 
 .map-label-pill {
     background-color: var(--surface);
-    padding: 4px;
+    padding: 4px 6px;
     border-radius: 20px;
     box-shadow: 0 2px 6px var(--shadow-sm);
     display: inline-flex;
@@ -196,17 +206,16 @@ body.sheet-peek .leaflet-bottom {
 }
 
 .map-label-text {
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 12.5px;
+    font-weight: 700;
     color: var(--accent);
-    letter-spacing: 0.2px;
+    letter-spacing: -0.01em;
 }
 
 .map-label-text.hide-label {
     display: none;
 }
 
-/* Dark theme for Leaflet's own widgets */
 body.dark-theme .leaflet-popup-content-wrapper,
 body.dark-theme .leaflet-popup-tip {
     background: var(--surface);
@@ -244,12 +253,10 @@ body.dark-theme .leaflet-control-attribution a {
     border-radius: 22px;
 }
 
-/* The input has no outline of its own, so ring the whole bar */
 .app-header[data-mode="search"]:focus-within {
     box-shadow: 0 4px 12px var(--shadow-md), 0 0 0 2px var(--accent);
 }
 
-/* Both faces share the same box and cross-fade, so the bar morphs instead of swapping */
 .header-search,
 .trip-card {
     position: absolute;
@@ -313,7 +320,6 @@ body.dark-theme .leaflet-control-attribution a {
     min-width: 0;
 }
 
-/* dotted line joining the start dot to the flag */
 .trip-points::before {
     content: "";
     position: absolute;
@@ -335,7 +341,8 @@ body.dark-theme .leaflet-control-attribution a {
     background: none;
     color: var(--text);
     font: inherit;
-    font-size: 15px;
+    font-size: 14.5px;
+    font-weight: 500;
     text-align: left;
     cursor: pointer;
 }
@@ -389,19 +396,20 @@ body.dark-theme .leaflet-control-attribution a {
 
 .trip-time {
     font-size: 17px;
-    font-weight: 700;
+    font-weight: 800;
     line-height: 1.15;
     color: var(--accent);
     white-space: nowrap;
+    letter-spacing: -0.02em;
 }
 
 .trip-dist {
-    font-size: 12px;
+    font-size: 12.5px;
+    font-weight: 600;
     color: var(--text-muted);
     white-space: nowrap;
 }
 
-/* The map's own controls sit below the taller trip card */
 body.trip-mode .leaflet-top.leaflet-left,
 body.trip-mode .leaflet-top.leaflet-right {
     top: calc(var(--header-offset) + var(--trip-height) - var(--header-height));
@@ -417,14 +425,6 @@ body.trip-mode .leaflet-top.leaflet-right {
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .app-header,
-    .header-search,
-    .trip-card {
-        transition: none;
-    }
 }
 
 .menu-btn {
@@ -483,18 +483,19 @@ body.trip-mode .leaflet-top.leaflet-right {
     min-height: var(--control-size);
     border: none;
     outline: none;
-    font-size: 16px; /* stops iOS zooming on focus */
+    font-size: 15.5px;
+    font-weight: 500;
     background: transparent;
-    color: var(--text);
+    color: var(--text-strong);
     -webkit-appearance: none;
     appearance: none;
 }
 
 .search-input::placeholder {
     color: var(--text-faint);
+    font-weight: 400;
 }
 
-/* We provide our own clear button */
 .search-input::-webkit-search-cancel-button,
 .search-input::-webkit-search-decoration {
     -webkit-appearance: none;
@@ -538,8 +539,8 @@ body.trip-mode .leaflet-top.leaflet-right {
     min-height: var(--control-size);
     padding: 12px 14px;
     font-size: 15px;
-    color: var(--text);
-    font-weight: 500;
+    color: var(--text-strong);
+    font-weight: 600;
     cursor: pointer;
     border-radius: 10px;
     transition: background 0.2s;
@@ -566,6 +567,7 @@ body.trip-mode .leaflet-top.leaflet-right {
     text-align: center;
     color: var(--text-faint);
     font-size: 14px;
+    font-weight: 500;
 }
 
 /* ==========================================================
@@ -575,7 +577,7 @@ body.trip-mode .leaflet-top.leaflet-right {
     position: fixed;
     bottom: calc(24px + env(safe-area-inset-bottom, 0px));
     right: calc(20px + env(safe-area-inset-right, 0px));
-    z-index: var(--z-map-controls); /* below the drawer overlay so the menu dims it */
+    z-index: var(--z-map-controls);
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -583,7 +585,6 @@ body.trip-mode .leaflet-top.leaflet-right {
     transition: bottom 0.4s cubic-bezier(0.25, 1, 0.3, 1);
 }
 
-/* Lift the controls above the sheet while it is peeking */
 body.sheet-peek .map-controls-container {
     bottom: calc(var(--peek-height) + 16px);
 }
@@ -650,7 +651,6 @@ body.sheet-peek .map-controls-container {
     display: flex;
     flex-direction: column;
     padding: calc(24px + env(safe-area-inset-top, 0px)) 16px 24px;
-    /* hidden (and out of the tab order) once the slide-out finishes */
     visibility: hidden;
     transition: left 0.3s ease, visibility 0s linear 0.3s;
 }
@@ -661,7 +661,6 @@ body.sheet-peek .map-controls-container {
     transition: left 0.3s ease, visibility 0s;
 }
 
-/* Solid green background: use a white focus ring */
 .side-drawer :focus-visible {
     outline-color: #ffffff;
 }
@@ -678,8 +677,8 @@ body.sheet-peek .map-controls-container {
 .drawer-header h2 {
     font-size: 20px;
     color: var(--text-on-green);
-    font-weight: 700;
-    letter-spacing: 0.5px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
 }
 
 .close-btn {
@@ -722,7 +721,7 @@ body.sheet-peek .map-controls-container {
     cursor: pointer;
     border-radius: 8px;
     font-size: 15px;
-    font-weight: 500;
+    font-weight: 600;
     transition: background 0.2s;
 }
 
@@ -791,11 +790,13 @@ body.sheet-peek .map-controls-container {
 }
 
 .modal-header h3 {
-    font-size: 17px;
+    font-size: 17.5px;
+    font-weight: 750;
     color: var(--accent);
     display: flex;
     align-items: center;
     gap: 8px;
+    letter-spacing: -0.02em;
 }
 
 .modal-close-btn {
@@ -817,11 +818,11 @@ body.sheet-peek .map-controls-container {
     background: var(--surface-hover);
 }
 
-/* Info modal body */
 .info-modal-body {
-    font-size: 14px;
-    line-height: 1.5;
-    color: inherit;
+    font-size: 14.5px;
+    font-weight: 450;
+    line-height: 1.6;
+    color: var(--text);
     word-break: break-word;
     overflow-wrap: anywhere;
 }
@@ -833,13 +834,15 @@ body.sheet-peek .map-controls-container {
 .info-modal-body a {
     color: var(--accent);
     text-decoration: underline;
+    font-weight: 600;
     word-break: break-all;
 }
 
 .break-email {
     display: inline-block;
     word-break: break-all;
-    font-size: 13px;
+    font-size: 13.5px;
+    font-weight: 600;
     margin-top: 2px;
 }
 
@@ -868,7 +871,6 @@ body.sheet-peek .map-controls-container {
     word-break: break-word;
 }
 
-/* Feedback form */
 .form-group {
     margin-bottom: 14px;
 }
@@ -876,9 +878,10 @@ body.sheet-peek .map-controls-container {
 .form-group label {
     display: block;
     font-size: 13px;
-    font-weight: 600;
-    color: var(--text-label);
+    font-weight: 700;
+    color: var(--text-strong);
     margin-bottom: 6px;
+    letter-spacing: -0.01em;
 }
 
 .form-input, .form-textarea {
@@ -886,16 +889,18 @@ body.sheet-peek .map-controls-container {
     padding: 10px 12px;
     border: 1px solid var(--border-field);
     border-radius: 8px;
-    font-size: 16px; /* avoids iOS focus-zoom */
+    font-size: 15px;
+    font-weight: 500;
     outline: none;
     font-family: inherit;
     background: var(--surface-field);
-    color: var(--text);
+    color: var(--text-strong);
     transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .form-input::placeholder, .form-textarea::placeholder {
     color: var(--text-faint);
+    font-weight: 400;
 }
 
 .form-input:focus, .form-textarea:focus {
@@ -917,7 +922,7 @@ body.sheet-peek .map-controls-container {
     padding: 12px;
     border-radius: 8px;
     font-size: 15px;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -936,7 +941,6 @@ body.sheet-peek .map-controls-container {
     cursor: wait;
 }
 
-/* Success popup */
 .success-popup {
     background: var(--surface);
     color: var(--text);
@@ -962,14 +966,17 @@ body.sheet-peek .map-controls-container {
 
 .success-popup h3 {
     font-size: 20px;
-    color: var(--text);
+    font-weight: 800;
+    color: var(--text-strong);
     margin-bottom: 8px;
+    letter-spacing: -0.02em;
 }
 
 .success-popup p {
-    font-size: 14px;
+    font-size: 14.5px;
+    font-weight: 500;
     color: var(--text-muted);
-    line-height: 1.4;
+    line-height: 1.5;
     margin-bottom: 20px;
 }
 
@@ -981,8 +988,8 @@ body.sheet-peek .map-controls-container {
     border: none;
     padding: 12px;
     border-radius: 8px;
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 14.5px;
+    font-weight: 700;
     cursor: pointer;
     transition: background 0.2s;
 }
@@ -1052,8 +1059,8 @@ body.dark-theme .leaflet-control-rotate {
     top: 0;
     left: 0;
     width: 100%;
-    height: 100vh;   /* fallback */
-    height: 100dvh;  /* matches window.innerHeight used for the peek offset */
+    height: 100vh;
+    height: 100dvh;
     background: var(--surface);
     color: var(--text);
     border-top-left-radius: 20px;
@@ -1074,10 +1081,9 @@ body.dark-theme .leaflet-control-rotate {
     border-top-left-radius: 20px;
     border-top-right-radius: 20px;
     flex-shrink: 0;
-    touch-action: none; /* JS handles the swipe */
+    touch-action: none;
 }
 
-/* Handle doubles as an expand/collapse button */
 .sheet-handle-btn {
     display: block;
     width: 100%;
@@ -1097,9 +1103,6 @@ body.dark-theme .leaflet-control-rotate {
     margin: 0 auto;
 }
 
-/* ==========================================================
-   Bottom Sheet Header - Mobile Centric Improvements
-   ========================================================== */
 .sheet-header {
     display: flex;
     flex-direction: column;
@@ -1124,16 +1127,17 @@ body.dark-theme .leaflet-control-rotate {
 }
 
 .sheet-header h3 {
-    font-size: 18px;
+    font-size: 19px;
+    font-weight: 800;
     color: var(--text-strong);
-    font-weight: 700;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    letter-spacing: -0.02em;
 }
 
 .sheet-header h3:focus {
-    outline: none; /* focused programmatically only, to announce the building */
+    outline: none;
 }
 
 .sheet-close-btn {
@@ -1160,7 +1164,7 @@ body.dark-theme .leaflet-control-rotate {
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
-    min-height: 28px;   /* keeps the peek height steady whether or not a route is showing */
+    min-height: 28px;
 }
 
 .sheet-stat-badge {
@@ -1169,9 +1173,9 @@ body.dark-theme .leaflet-control-rotate {
     gap: 5px;
     background: var(--surface-muted, #f0f4f1);
     color: var(--accent, #0B793D);
-    font-size: 12px;
-    font-weight: 600;
-    padding: 4px 8px;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 4px 9px;
     border-radius: 12px;
     white-space: nowrap;
 }
@@ -1185,7 +1189,6 @@ body.dark-theme .sheet-stat-badge {
     color: #4CAF50;
 }
 
-/* Small outlined action next to the route badges ("Start from here") */
 .sheet-pill-btn {
     margin-left: auto;
     display: inline-flex;
@@ -1197,8 +1200,8 @@ body.dark-theme .sheet-stat-badge {
     border-radius: 14px;
     background: transparent;
     color: var(--accent);
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 12.5px;
+    font-weight: 700;
     cursor: pointer;
     white-space: nowrap;
 }
@@ -1220,12 +1223,13 @@ body.dark-theme .sheet-stat-badge {
     padding: 12px;
     border-radius: 10px;
     font-size: 15px;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
+    letter-spacing: -0.01em;
 }
 
 .sheet-content {
@@ -1271,6 +1275,7 @@ body.dark-theme .sheet-stat-badge {
     gap: 6px;
     color: var(--text-muted);
     font-size: 12px;
+    font-weight: 500;
 }
 
 .sheet-placeholder-text i {
@@ -1278,20 +1283,21 @@ body.dark-theme .sheet-stat-badge {
 }
 
 .sheet-description {
-    font-size: 14px;
+    font-size: 14.5px;
     color: var(--text-muted);
-    line-height: 1.5;
+    line-height: 1.65;
+    font-weight: 450;
 }
 
 /* ==========================================================
-   Current location chip, route chip, toast, "you are here" marker
+   Current location chip, route chip, toast, markers
    ========================================================== */
 .status-stack {
     position: absolute;
     top: var(--header-offset);
     left: var(--header-gap);
-    right: calc(var(--header-gap) + var(--control-size) + 12px);   /* leave room for the rotate control */
-    z-index: 900;                                                  /* below the header and its dropdown */
+    right: calc(var(--header-gap) + var(--control-size) + 12px);
+    z-index: 900;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -1311,7 +1317,8 @@ body.dark-theme .sheet-stat-badge {
     border-radius: 20px;
     box-shadow: 0 3px 10px var(--shadow-md);
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 700;
+    letter-spacing: -0.01em;
 }
 
 .status-chip[hidden] {
@@ -1362,12 +1369,13 @@ body.dark-theme .sheet-stat-badge {
     bottom: calc(24px + env(safe-area-inset-bottom, 0px));
     transform: translate(-50%, 20px);
     max-width: calc(100% - 32px);
-    background: #222222;
+    background: #1a1a1a;
     color: #ffffff;
     padding: 12px 16px;
     border-radius: 12px;
     font-size: 14px;
-    line-height: 1.35;
+    font-weight: 600;
+    line-height: 1.4;
     text-align: center;
     box-shadow: 0 4px 14px var(--shadow-sm);
     opacity: 0;
@@ -1386,7 +1394,7 @@ body.sheet-peek .toast {
 }
 
 body.dark-theme .toast {
-    background: #eeeeee;
+    background: #ffffff;
     color: #111111;
 }
 
@@ -1415,9 +1423,6 @@ body.dark-theme .toast {
     cursor: default;
 }
 
-/* ==========================================================
-   Live location dot and route destination flag
-   ========================================================== */
 .user-dot span {
     display: block;
     width: 22px;

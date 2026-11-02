@@ -18,75 +18,48 @@
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="css/design.css">
-
-    <style>
-        .sheet-header-left {
-            display: flex;
-            align-items: center;
-            flex: 1;
-            min-width: 0;
-        }
-
-        .sheet-header-right {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-shrink: 0;
-        }
-
-        .sheet-stat-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            background: var(--surface-muted, #f0f4f1);
-            color: var(--accent, #0B793D);
-            font-size: 13px;
-            font-weight: 600;
-            padding: 4px 10px;
-            border-radius: 14px;
-            white-space: nowrap;
-        }
-
-        body.dark-theme .sheet-stat-badge {
-            background: #2a2a2a;
-            color: #4CAF50;
-        }
-    </style>
 </head>
 <body>
 
-    <!-- Floating search bar -->
-    <header class="app-header">
-        <button type="button" class="menu-btn" id="menuToggle" aria-label="Open menu" aria-expanded="false" aria-controls="sideDrawer">
-            <i class="fa-solid fa-bars" aria-hidden="true"></i>
-        </button>
-        <div class="search-container">
-            <input type="search" class="search-input" id="searchInput" placeholder="Search location..." aria-label="Search map"
-                   autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="buildingsList">
-            <button type="button" class="search-btn" id="searchBtn" aria-label="Search">
-                <i class="fa-solid fa-magnifying-glass" id="searchIcon" aria-hidden="true"></i>
+    <!-- Floating search bar with hamburger on the left -->
+    <header class="app-header" id="appHeader" data-mode="search">
+        <div class="header-search" id="headerSearch">
+            <button type="button" class="menu-btn" id="menuToggle" aria-label="Open menu" aria-expanded="false" aria-controls="sideDrawer">
+                <i class="fa-solid fa-bars" aria-hidden="true"></i>
             </button>
+            <div class="search-container">
+                <input type="search" class="search-input" id="searchInput" placeholder="Search location..." aria-label="Search map"
+                       autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="buildingsList">
+                <button type="button" class="search-btn" id="searchBtn" aria-label="Search">
+                    <i class="fa-solid fa-magnifying-glass" id="searchIcon" aria-hidden="true"></i>
+                </button>
+            </div>
         </div>
+        <section class="trip-card" id="tripCard" data-origin="pin" aria-label="Walking route">
+            <button type="button" class="trip-back" id="tripBackBtn" aria-label="Clear route"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i></button>
+            <div class="trip-points">
+                <button type="button" class="trip-row" id="tripFromBtn"><span class="trip-marker"><span class="trip-dot"></span></span><span class="sr-only">From: </span><span class="trip-text" id="tripFromText">Your location</span></button>
+                <button type="button" class="trip-row trip-row-to" id="tripToBtn"><span class="trip-marker"><i class="fa-solid fa-flag-checkered" aria-hidden="true"></i></span><span class="sr-only">To: </span><span class="trip-text" id="tripToText">Destination</span></button>
+            </div>
+            <div class="trip-summary"><span class="trip-time" id="tripTime">1 min</span><span class="trip-dist" id="tripDist">0 m</span></div>
+        </section>
         <!-- Inline search dropdown -->
         <div class="search-dropdown" id="searchDropdown">
             <ul class="buildings-list" id="buildingsList" role="listbox" aria-label="Campus locations">
-                <!-- Populated dynamically -->
+                <!-- Populated dynamically, alphabetically -->
             </ul>
         </div>
     </header>
 
-    <!-- Current location and active route stack -->
+    <!-- Where you start (QR / location). The route itself lives in the trip card above. -->
     <div class="status-stack" id="statusStack">
         <div class="status-chip here-chip" id="hereChip" hidden>
-            <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+            <i class="fa-solid fa-location-dot" id="hereChipIcon" aria-hidden="true"></i>
             <span id="hereChipText"></span>
-        </div>
-        <div class="status-chip route-chip" id="routeChip" hidden>
-            <i class="fa-solid fa-route" aria-hidden="true"></i>
-            <span id="routeChipText"></span>
-            <button type="button" id="clearRouteBtn" aria-label="Clear route"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+            <button type="button" id="clearOriginBtn" aria-label="Clear starting point"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
         </div>
     </div>
+    <div class="sr-only" id="routeAnnouncer" role="status" aria-live="polite"></div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <!-- Side navigation overlay and drawer -->
@@ -200,25 +173,31 @@
                 <span class="sheet-handle"></span>
             </button>
             <div class="sheet-header">
-                <div class="sheet-header-top">
-                    <div class="sheet-header-left">
-                        <h3 id="sheetTitle" tabindex="-1">Building Title</h3>
-                    </div>
-                    <button type="button" class="sheet-close-btn" id="closeSheetBtn" aria-label="Close details">
-                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                    </button>
-                </div>
-                <div class="sheet-header-right">
-                    <span class="sheet-stat-badge" id="sheetTimeBadge" hidden>
-                        <i class="fa-regular fa-clock" aria-hidden="true"></i>
-                        <span id="sheetTimeText">0 min</span>
-                    </span>
-                    <span class="sheet-stat-badge" id="sheetDistanceBadge" hidden>
-                        <i class="fa-solid fa-person-walking" aria-hidden="true"></i>
-                        <span id="sheetDistanceText">0 m</span>
-                    </span>
-                </div>
-            </div>
+    <!-- Top Row: Full building name and close button -->
+    <div class="sheet-header-top">
+        <div class="sheet-header-left">
+            <h3 id="sheetTitle" tabindex="-1">Building Title</h3>
+        </div>
+        <button type="button" class="sheet-close-btn" id="closeSheetBtn" aria-label="Close details">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+    </div>
+
+    <!-- Bottom Row: Estimated Time & Distance Badges -->
+    <div class="sheet-header-right">
+        <span class="sheet-stat-badge" id="sheetTimeBadge" hidden>
+            <i class="fa-regular fa-clock" aria-hidden="true"></i>
+            <span id="sheetTimeText">0 min</span>
+        </span>
+        <span class="sheet-stat-badge" id="sheetDistanceBadge" hidden>
+            <i class="fa-solid fa-person-walking" aria-hidden="true"></i>
+            <span id="sheetDistanceText">0 m</span>
+        </span>
+        <button type="button" class="sheet-pill-btn" id="startHereBtn" hidden>
+            <i class="fa-solid fa-location-dot" aria-hidden="true"></i> Start from here
+        </button>
+    </div>
+</div>
             <!-- Action button -->
             <button type="button" class="destination-btn" id="goToDestinationBtn">
                 <i class="fa-solid fa-location-arrow" aria-hidden="true"></i> Go to Destination
@@ -267,11 +246,11 @@
         'use strict';
 
         const geojsonData = {
-          "type": "FeatureCollection",
-          "features": [
+        "type": "FeatureCollection",
+        "features": [
             {"type": "Feature", "properties": {"perimeter": "oc_perimeter"}, "geometry": {"type": "LineString", "coordinates": [[120.996124, 14.478541], [120.99584, 14.477921], [120.995645, 14.478038], [120.995598, 14.477931], [120.995808, 14.477851], [120.995748, 14.477682], [120.994915, 14.478017], [120.995758, 14.479822], [120.995994, 14.480113], [120.996671, 14.479866], [120.99776, 14.47923], [120.997333, 14.478282], [120.996812, 14.478525], [120.996676, 14.478282], [120.996124, 14.478541]]}},
             {"type": "Feature", "properties": {"EYE CENTER": "OGH_EYE_CENTER", "entrances": [{"name": "entrance1", "coords": [120.997083, 14.478776]}]}, "geometry": {"type": "Polygon", "coordinates": [[[120.997023, 14.478803], [120.996963, 14.478683], [120.996901, 14.478564], [120.997067, 14.478487], [120.997188, 14.478728], [120.997023, 14.478803]]]}},
-            {"type": "Feature", "properties": {"Tennis Court": "OC_TENNIS", "entrances": [{"name": "entrance1", "coords": [120.996943, 14.479616]}, {"name": "entrance2", "coords": [120.9972441, 14.4793578]}]}, "geometry": {"type": "Polygon", "coordinates": [[[120.996933, 14.479621], [120.996789, 14.479335], [120.996925, 14.479268], [120.997088, 14.479194], [120.99723, 14.479479], [120.996933, 14.479621]]]}},
+            {"type": "Feature", "properties": {"TENNIS COURT": "OC_TENNIS", "entrances": [{"name": "entrance1", "coords": [120.996943, 14.479616]}, {"name": "entrance2", "coords": [120.9972441, 14.4793578]}]}, "geometry": {"type": "Polygon", "coordinates": [[[120.996933, 14.479621], [120.996789, 14.479335], [120.996925, 14.479268], [120.997088, 14.479194], [120.99723, 14.479479], [120.996933, 14.479621]]]}},
             {"type": "Feature", "properties": {"SDL": "OC_SDL", "entrances": [{"name": "entrance1", "coords": [120.996746, 14.479541]}, {"name": "entrance2", "coords": [120.9968036, 14.4796553]}]}, "geometry": {"type": "Polygon", "coordinates": [[[120.996814, 14.479676], [120.996673, 14.479396], [120.996789, 14.479336], [120.996933, 14.479621], [120.996814, 14.479676]]]}},
             {"type": "Feature", "properties": {"BOOKSTORE": "OC_BOOKSTORE", "entrances": [{"name": "entrance1", "coords": [120.996569, 14.479701]}]}, "geometry": {"type": "Polygon", "coordinates": [[[120.996551, 14.479665], [120.996719, 14.479578], [120.996778, 14.479693], [120.996607, 14.479775], [120.996551, 14.479665]]]}},
             {"type": "Feature", "properties": {"CLINIC": "OC_CLINIC", "entrances": [{"name": "entrance1", "coords": [120.996495, 14.479549]}]}, "geometry": {"type": "Polygon", "coordinates": [[[120.996528, 14.479618], [120.996471, 14.479502], [120.996637, 14.479415], [120.996695, 14.479534], [120.996617, 14.479573], [120.996528, 14.479618]]]}},
@@ -342,7 +321,7 @@
             {"type": "Feature", "properties": {"walkway": "walkway", "label": "auto_sdl_entrance2"}, "geometry": {"type": "LineString", "coordinates": [[120.9968036, 14.4796553], [120.9967903, 14.4796617]]}},
             {"type": "Feature", "properties": {"walkway": "walkway", "label": "auto_tennis_court_entrance2"}, "geometry": {"type": "LineString", "coordinates": [[120.9972441, 14.4793578], [120.9972901, 14.4793765]]}},
             {"type": "Feature", "properties": {"walkway": "walkway", "label": "auto_bridge_resort_walkway"}, "geometry": {"type": "LineString", "coordinates": [[120.995558, 14.477923], [120.9954302, 14.4779817]]}}
-          ]
+        ]
         };
 
         /* Config */
@@ -352,13 +331,19 @@
             serviceId: 'service_wdyvki8',
             templateId: 'template_86k881g'
         };
-        const PEEK_HEIGHT = 135;
+        const PEEK_FALLBACK_PX = 190;   // only used if the sheet cannot be measured
         const THEME_KEY = 'ocnpTheme';
         const DEBUG_WALKWAYS = false;
         const NODE_M = 1.5;
         const JUNCTION_M = 1.5;
         const ENTRANCE_SNAP_M = 30;
         const WALK_SPEED_MS = 1.3;
+        const MAX_OFF_NETWORK_M = 90;   // GPS fixes further than this from any walkway are not routed
+        const GPS_MAX_ACCURACY_M = 50;  // worse fixes are shown on the map but not used as a starting point
+        const ROUTE_REFRESH_M = 6;      // re-plan a live route after the walker moves this far
+        const ARRIVE_M = 15;
+        const ORIGIN_KEY = 'ocnpOrigin';
+        const GPS_OFF_KEY = 'ocnpGpsOff';
 
         if (window.emailjs) {
             emailjs.init(EMAIL_CONFIG.publicKey);
@@ -458,7 +443,7 @@
         const dark_map = L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png', {
             minZoom: 0,
             maxZoom: 20,
-            attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>, &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         });
 
         let currentTileLayer = isDarkMode ? dark_map : light_map;
@@ -503,6 +488,7 @@
                 if (modal) { closeModal(modal); return; }
                 if (sideDrawer.classList.contains('active')) { closeMenu(); return; }
                 if (currentSnapState !== 'closed') { closeBottomSheet(true); return; }
+                if (routeState) { clearRoute(); return; }
             }
 
             if (e.key === 'Tab') {
@@ -538,8 +524,10 @@
         safeAreaProbe.style.cssText = 'position:fixed;left:0;bottom:0;width:0;height:env(safe-area-inset-bottom,0px);visibility:hidden;pointer-events:none;';
         document.body.appendChild(safeAreaProbe);
 
+        /* The peek height is the real height of the drag area (handle, title, badges, button and safe area) */
         function getPeekHeight() {
-            return PEEK_HEIGHT + safeAreaProbe.offsetHeight;
+            const measured = Math.ceil(sheetDragArea.getBoundingClientRect().height);
+            return measured > 0 ? measured : PEEK_FALLBACK_PX + safeAreaProbe.offsetHeight;
         }
 
         function getPeekOffsetY() {
@@ -579,8 +567,7 @@
             sheetTitle.textContent = data.title || 'Location Details';
             sheetDescription.textContent = data.description || 'No description available.';
             activeBuildingData = data;
-            if (routeTarget && routeTarget !== data) clearRoute();
-            updateDestinationBtn();
+            refreshSheetActions();
 
             if (!bottomSheet.contains(document.activeElement)) {
                 sheetOpener = document.activeElement;
@@ -679,7 +666,7 @@
         });
 
         /* GeoJSON Buildings */
-        const NON_NAME_KEYS = ['entrances', 'perimeter', 'walkway', 'label'];
+        const NON_NAME_KEYS = ['entrances', 'perimeter', 'walkway'];
 
         function getBuildingKey(props) {
             if (props.name) return 'name';
@@ -687,12 +674,12 @@
         }
 
         const geoLayer = L.geoJSON(geojsonData, {
-            filter: (feature) => DEBUG_WALKWAYS || feature.properties.walkway !== "walkway",
+            filter: (feature) => DEBUG_WALKWAYS || !feature.properties.walkway,
             style: function (feature) {
                 const props = feature.properties;
                 if (props.perimeter) {
                     return { color: '#d9534f', weight: 3, dashArray: '5, 5', fill: false };
-                } else if (props.walkway === "walkway") {
+                } else if (props.walkway) {
                     return { color: '#8a8a8a', weight: 2, dashArray: '2 4', opacity: 0.8 };
                 } else if (!getBuildingKey(props)) {
                     return { color: '#8a8a8a', weight: 1, fillColor: '#8a8a8a', fillOpacity: 0.15 };
@@ -703,7 +690,7 @@
             },
             onEachFeature: function (feature, layer) {
                 const props = feature.properties;
-                if (props.perimeter || props.walkway === "walkway" || feature.geometry.type === 'Point') return;
+                if (props.perimeter || props.walkway || feature.geometry.type === 'Point') return;
 
                 const nameKey = getBuildingKey(props);
                 if (!nameKey) return;
@@ -718,9 +705,10 @@
                 const buildingName = props.name || nameKey;
                 const buildingId = props.name ? (props.id || '') : (props[nameKey] || '');
 
-                const entrances = (props.entrances || [])
+                const doors = (props.entrances || [])
                     .filter((e) => !/^car/i.test(e.name))
-                    .map((e) => L.latLng(e.coords[1], e.coords[0]));
+                    .map((e) => ({ name: e.name, latlng: L.latLng(e.coords[1], e.coords[0]) }));
+                const entrances = doors.map((d) => d.latlng);
 
                 const buildingObj = {
                     title: buildingName,
@@ -728,6 +716,7 @@
                     description: `Building ID: ${buildingId}`,
                     imageUrls: [],
                     coords: center,
+                    doors,
                     entrances: entrances.length ? entrances : (center ? [center] : []),
                     layer: layer
                 };
@@ -782,7 +771,9 @@
 
         campusBuildings.sort((a, b) => a.title.localeCompare(b.title));
 
-        /* Walkway Graph & Pathfinding */
+        /* ==========================================================
+           Walkway graph & pathfinding
+           ========================================================== */
         const KX = 111320 * Math.cos(14.479 * Math.PI / 180);
         const KY = 110574;
         const toM = (lng, lat) => [lng * KX, lat * KY];
@@ -791,11 +782,16 @@
         function projectOnSeg(p, a, b) {
             const dx = b[0] - a[0], dy = b[1] - a[1], len2 = dx * dx + dy * dy;
             const t = len2 ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / len2)) : 0;
-            return { t, d: Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy)) };
+            const q = [a[0] + t * dx, a[1] + t * dy];
+            return { t, d: Math.hypot(p[0] - q[0], p[1] - q[1]), p: q };
         }
 
-        const gNodes = [];
-        const gAdj = [];
+        const gNodes = [];      // [x, y] in metres
+        const gAdj = [];        // gAdj[i] = [{ to, w }]
+        const gEdges = [];      // [{ a, b, w }], one per walkable segment (used to snap GPS positions)
+        const gEdgeKeys = new Set();
+        let gComp = [];         // connected-component id per node
+        let gMainComp = -1;     // the largest component; only this one is ever used for routing
 
         function nodeFor(p) {
             for (let i = 0; i < gNodes.length; i++) {
@@ -806,26 +802,34 @@
             return gNodes.length - 1;
         }
 
+        function addEdge(a, b) {
+            if (a === b) return;
+            const key = a < b ? `${a}-${b}` : `${b}-${a}`;
+            if (gEdgeKeys.has(key)) return;
+            gEdgeKeys.add(key);
+            const w = Math.hypot(gNodes[a][0] - gNodes[b][0], gNodes[a][1] - gNodes[b][1]);
+            gAdj[a].push({ to: b, w });
+            gAdj[b].push({ to: a, w });
+            gEdges.push({ a, b, w });
+        }
+
         (function buildWalkGraph() {
             const lines = geojsonData.features
-                .filter((f) => f.properties.walkway === "walkway" && f.geometry.type === 'LineString')
+                .filter((f) => f.properties.walkway && f.geometry.type === 'LineString')
                 .map((f) => f.geometry.coordinates.map((c) => toM(c[0], c[1])));
 
             lines.forEach((pts, li) => {
                 let prev = null;
                 const visit = (p) => {
                     const id = nodeFor(p);
-                    if (prev !== null && prev !== id) {
-                        const w = Math.hypot(gNodes[prev][0] - gNodes[id][0], gNodes[prev][1] - gNodes[id][1]);
-                        gAdj[prev].push({ to: id, w });
-                        gAdj[id].push({ to: prev, w });
-                    }
+                    if (prev !== null) addEdge(prev, id);
                     prev = id;
                 };
 
                 visit(pts[0]);
                 for (let s = 0; s < pts.length - 1; s++) {
                     const a = pts[s], b = pts[s + 1], extra = [];
+                    // A vertex of another line that sits on this segment is a junction
                     lines.forEach((other, lj) => {
                         if (lj === li) return;
                         other.forEach((v) => {
@@ -839,86 +843,228 @@
             });
         })();
 
-        function nearestNode(latlng) {
+        (function labelComponents() {
+            gComp = new Array(gNodes.length).fill(-1);
+            const sizes = [];
+            for (let s = 0; s < gNodes.length; s++) {
+                if (gComp[s] !== -1) continue;
+                const id = sizes.length;
+                let size = 0;
+                const stack = [s];
+                gComp[s] = id;
+                while (stack.length) {
+                    const u = stack.pop();
+                    size++;
+                    gAdj[u].forEach(({ to }) => {
+                        if (gComp[to] === -1) { gComp[to] = id; stack.push(to); }
+                    });
+                }
+                sizes.push(size);
+            }
+            gMainComp = sizes.indexOf(Math.max(...sizes));
+            if (sizes.length > 1) {
+                console.warn(`Walkway network has ${sizes.length} separate pieces; only the largest is used.`);
+            }
+        })();
+
+        function nearestNode(latlng, maxM = ENTRANCE_SNAP_M) {
             const p = toM(latlng.lng, latlng.lat);
-            let best = -1, bestD = ENTRANCE_SNAP_M;
-            gNodes.forEach((n, i) => {
-                const d = Math.hypot(n[0] - p[0], n[1] - p[1]);
-                if (d < bestD) { bestD = d; best = i; }
-            });
+            let best = null;
+            for (let i = 0; i < gNodes.length; i++) {
+                if (gComp[i] !== gMainComp) continue;
+                const d = Math.hypot(gNodes[i][0] - p[0], gNodes[i][1] - p[1]);
+                if (d <= maxM && (!best || d < best.d)) best = { node: i, d };
+            }
             return best;
         }
 
-        function dijkstra(src) {
-            const dist = new Array(gNodes.length).fill(Infinity);
-            const prev = new Array(gNodes.length).fill(-1);
-            const done = new Array(gNodes.length).fill(false);
-            dist[src] = 0;
+        function snapToNetwork(latlng, maxM) {
+            const p = toM(latlng.lng, latlng.lat);
+            let best = null;
+            for (const e of gEdges) {
+                if (gComp[e.a] !== gMainComp) continue;
+                const { t, d, p: q } = projectOnSeg(p, gNodes[e.a], gNodes[e.b]);
+                if (d <= maxM && (!best || d < best.d)) best = { edge: e, t, d, point: q };
+            }
+            return best;
+        }
+
+        /* A "source" is where a route can start, a "target" where it can end.
+           leg = metres from the real point to the walkway node, lead/tail = the polyline for that leg. */
+        function doorSource(latlng) {
+            const hit = nearestNode(latlng);
+            return hit ? { node: hit.node, leg: hit.d, lead: [latlng] } : null;
+        }
+
+        function doorTarget(latlng) {
+            const hit = nearestNode(latlng);
+            return hit ? { node: hit.node, leg: hit.d, tail: [latlng] } : null;
+        }
+
+        /* A GPS fix is snapped to the nearest point ALONG a walkway, so it can start mid-segment */
+        function gpsSources(latlng) {
+            const snap = snapToNetwork(latlng, MAX_OFF_NETWORK_M);
+            if (!snap) return null;
+            const { edge, t, d, point } = snap;
+            const lead = [latlng, toLL(point)];
+            return [
+                { node: edge.a, leg: d + t * edge.w, lead },
+                { node: edge.b, leg: d + (1 - t) * edge.w, lead }
+            ];
+        }
+
+        /* Multi-source Dijkstra: finds the best (source, target) pair in one pass */
+        function planRoute(sources, targets) {
+            const n = gNodes.length;
+            const dist = new Array(n).fill(Infinity);
+            const prev = new Array(n).fill(-1);
+            const root = new Array(n).fill(-1);
+            const done = new Array(n).fill(false);
+
+            sources.forEach((s, i) => {
+                if (s.leg < dist[s.node]) { dist[s.node] = s.leg; root[s.node] = i; }
+            });
+
             for (;;) {
                 let u = -1;
-                for (let i = 0; i < gNodes.length; i++) {
-                    if (!done[i] && (u === -1 || dist[i] < dist[u])) u = i;
+                for (let i = 0; i < n; i++) {
+                    if (!done[i] && dist[i] < Infinity && (u === -1 || dist[i] < dist[u])) u = i;
                 }
-                if (u === -1 || dist[u] === Infinity) break;
+                if (u === -1) break;
                 done[u] = true;
-                gAdj[u].forEach(({ to, w }) => {
-                    if (dist[u] + w < dist[to]) { dist[to] = dist[u] + w; prev[to] = u; }
-                });
+                for (const { to, w } of gAdj[u]) {
+                    if (dist[u] + w < dist[to]) { dist[to] = dist[u] + w; prev[to] = u; root[to] = root[u]; }
+                }
             }
-            return { dist, prev };
-        }
 
-        function findRoute(fromPts, toPts) {
             let best = null;
-            fromPts.forEach((a) => {
-                const s = nearestNode(a);
-                if (s < 0) return;
-                const { dist, prev } = dijkstra(s);
-                toPts.forEach((b) => {
-                    const t = nearestNode(b);
-                    if (t < 0 || dist[t] === Infinity || (best && dist[t] >= best.distance)) return;
-                    const path = [];
-                    for (let n = t; n !== -1; n = prev[n]) path.push(toLL(gNodes[n]));
-                    best = { distance: dist[t], path: [a, ...path.reverse(), b] };
-                });
+            targets.forEach((t) => {
+                const total = dist[t.node] + t.leg;
+                if (total < Infinity && (!best || total < best.total)) best = { t, total };
             });
-            return best;
+            if (!best) return null;
+
+            const nodes = [];
+            for (let u = best.t.node; u !== -1; u = prev[u]) nodes.push(u);
+            nodes.reverse();
+            const src = sources[root[nodes[0]]];
+
+            return {
+                distance: best.total,
+                path: [...src.lead, ...nodes.map((i) => toLL(gNodes[i])), ...best.t.tail],
+                start: src.lead[0],
+                end: best.t.tail[best.t.tail.length - 1]
+            };
         }
 
-        /* Route Display & Highlights */
+        /* origin is { source: 'qr' | 'manual', building, points } or { source: 'gps', latlng } */
+        function computeRoute(origin, target) {
+            let sources;
+            if (origin.source === 'gps') {
+                sources = gpsSources(origin.latlng);
+                if (!sources) {
+                    return { error: 'You seem to be away from the campus walkways. Move closer, or scan the QR code at your building.' };
+                }
+            } else {
+                sources = origin.points.map(doorSource).filter(Boolean);
+                if (!sources.length) return { error: `Can't find a walkway near ${origin.building.title}.` };
+            }
+
+            const targets = target.entrances.map(doorTarget).filter(Boolean);
+            if (!targets.length) return { error: `Can't find a walkway near ${target.title}.` };
+
+            const route = planRoute(sources, targets);
+            return route ? { route } : { error: `No walkable path found to ${target.title}.` };
+        }
+
+        /* Route state & display */
         const STYLE_HERE = { color: '#f59e0b', weight: 3, fillColor: '#f59e0b', fillOpacity: 0.45 };
         const STYLE_DEST = { color: '#2563eb', weight: 3, fillColor: '#2563eb', fillOpacity: 0.35 };
 
+        const USER_ICON = L.divIcon({ className: 'user-dot', html: '<span></span>', iconSize: [22, 22], iconAnchor: [11, 11] });
+        const HERE_ICON = L.divIcon({ className: 'here-marker', html: '<span></span>', iconSize: [44, 44], iconAnchor: [22, 22] });
+        const END_ICON = L.divIcon({
+            className: 'route-end-marker',
+            html: '<span><i class="fa-solid fa-flag-checkered" aria-hidden="true"></i></span>',
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+        });
+
         const hereChip = $('hereChip');
+        const hereChipIcon = $('hereChipIcon');
         const hereChipText = $('hereChipText');
-        const routeChip = $('routeChip');
-        const routeChipText = $('routeChipText');
+        const clearOriginBtn = $('clearOriginBtn');
+        const appHeader = $('appHeader');
+        const tripCard = $('tripCard');
+        const tripFromBtn = $('tripFromBtn');
+        const tripFromText = $('tripFromText');
+        const tripToBtn = $('tripToBtn');
+        const tripToText = $('tripToText');
+        const tripTime = $('tripTime');
+        const tripDist = $('tripDist');
+        const routeAnnouncer = $('routeAnnouncer');
+        const startHereBtn = $('startHereBtn');
         const toastEl = $('toast');
 
-        let origin = null;
+        let pinnedOrigin = null;   // set by a QR scan or "Start from here"; always wins over GPS
         let hereMarker = null;
         let routeLine = null;
         let routeCasing = null;
+        let routeStartDot = null;
+        let routeEndMarker = null;
         let routeTarget = null;
+        let routeState = null;     // { target, originSource, from, distance }
+        let pendingTarget = null;  // destination to route to as soon as a GPS fix arrives
+        let arrivedFor = null;
         let toastTimer = null;
+
+        const gps = { watchId: null, fix: null, recenter: false, denied: false, lastErrorAt: 0, weakNotified: false };
+
+        function storeGet(key) {
+            try { return sessionStorage.getItem(key); } catch (e) { return null; }
+        }
+        function storeSet(key, value) {
+            try { sessionStorage.setItem(key, value); } catch (e) { }
+        }
+        function storeRemove(key) {
+            try { sessionStorage.removeItem(key); } catch (e) { }
+        }
 
         function showToast(message) {
             toastEl.textContent = message;
             toastEl.classList.add('show');
             clearTimeout(toastTimer);
-            toastTimer = setTimeout(() => toastEl.classList.remove('show'), 3500);
+            toastTimer = setTimeout(() => toastEl.classList.remove('show'), 4000);
+        }
+
+        function formatRoute(distance) {
+            return {
+                metres: Math.round(distance),
+                minutes: Math.max(1, Math.round(distance / WALK_SPEED_MS / 60))
+            };
+        }
+
+        function gpsIsUsable() {
+            return !!(gps.fix && gps.fix.accuracy <= GPS_MAX_ACCURACY_M);
+        }
+
+        /* Where does a new route start? QR / "Start from here" first, otherwise a usable GPS fix. */
+        function getOrigin() {
+            if (pinnedOrigin) return pinnedOrigin;
+            if (gpsIsUsable()) return { source: 'gps', latlng: gps.fix.latlng, accuracy: gps.fix.accuracy };
+            return null;
         }
 
         function applyHighlights() {
             campusBuildings.forEach((b) => geoLayer.resetStyle(b.layer));
-            if (origin && origin.building) origin.building.layer.setStyle(STYLE_HERE);
+            if (pinnedOrigin) pinnedOrigin.building.layer.setStyle(STYLE_HERE);
             if (routeTarget) routeTarget.layer.setStyle(STYLE_DEST);
         }
 
         function updateDestinationBtn() {
             const b = activeBuildingData;
             let icon = 'fa-location-arrow', label = 'Go to Destination', disabled = false;
-            if (b && origin && origin.building === b) {
+            if (b && pinnedOrigin && pinnedOrigin.building === b) {
                 icon = 'fa-location-dot'; label = 'You are here'; disabled = true;
             } else if (b && routeTarget === b) {
                 icon = 'fa-xmark'; label = 'Clear route';
@@ -927,106 +1073,450 @@
             goToDestinationBtn.disabled = disabled;
         }
 
+        function updateStartHereBtn() {
+            const b = activeBuildingData;
+            startHereBtn.hidden = !b || !!(pinnedOrigin && pinnedOrigin.building === b);
+        }
+
+        /* Time and distance badges only belong to the building the route leads to */
+        function updateSheetStats() {
+            const show = !!(routeState && activeBuildingData === routeState.target);
+            sheetTimeBadge.hidden = !show;
+            sheetDistanceBadge.hidden = !show;
+            if (show) {
+                const { metres, minutes } = formatRoute(routeState.distance);
+                sheetDistanceText.textContent = `${metres} m`;
+                sheetTimeText.textContent = `${minutes} min`;
+            }
+        }
+
+        function refreshPeek() {
+            if (currentSnapState === 'peek') snapToState('peek');
+        }
+
+        function refreshSheetActions() {
+            updateDestinationBtn();
+            updateStartHereBtn();
+            updateSheetStats();
+            refreshPeek();
+        }
+
+        function updateHereChip() {
+            let text = '', icon = 'fa-location-dot', label = '', gpsMode = false;
+            if (pinnedOrigin) {
+                text = `You are at ${pinnedOrigin.building.title}`;
+                label = 'Clear starting point';
+            } else if (gps.fix) {
+                gpsMode = true;
+                icon = 'fa-location-crosshairs';
+                const acc = Math.round(gps.fix.accuracy);
+                text = gpsIsUsable() ? `Using your location · ±${acc} m` : `Weak GPS signal · ±${acc} m`;
+                label = 'Turn off location';
+            } else if (gps.watchId !== null) {
+                gpsMode = true;
+                icon = 'fa-location-crosshairs';
+                text = 'Finding your location…';
+                label = 'Turn off location';
+            }
+            hereChip.hidden = !text || !!routeState;
+            hereChip.classList.toggle('is-gps', gpsMode);
+            hereChipIcon.className = `fa-solid ${icon}`;
+            hereChipText.textContent = text;
+            clearOriginBtn.setAttribute('aria-label', label || 'Clear');
+        }
+
+        /* The search bar turns into a compact trip card (from / to / time) while a route is showing */
+        function doorLabel(name) {
+            return String(name).replace(/^entrance\s*(\d+)$/i, 'Entrance $1');
+        }
+
+        function fromLabel(origin) {
+            if (origin.source === 'gps') return 'Your location';
+            return origin.door ? `${origin.building.title} · ${doorLabel(origin.door.name)}` : origin.building.title;
+        }
+
+        function updateTripCard(origin, target, distance) {
+            const { metres, minutes } = formatRoute(distance);
+            tripFromText.textContent = fromLabel(origin);
+            tripToText.textContent = target.title;
+            tripTime.textContent = distance <= ARRIVE_M ? 'Arrived' : `${minutes} min`;
+            tripDist.textContent = `${metres} m`;
+            tripCard.dataset.origin = origin.source === 'gps' ? 'gps' : 'pin';
+        }
+
+        function setTripMode(on) {
+            if (!on && tripCard.contains(document.activeElement)) {
+                (currentSnapState !== 'closed' ? sheetTitle : menuToggle).focus({ preventScroll: true });
+            }
+            appHeader.dataset.mode = on ? 'trip' : 'search';
+            document.body.classList.toggle('trip-mode', on);
+            if (on) setDropdownOpen(false);
+        }
+
+        function removeRouteLayers() {
+            [routeLine, routeCasing, routeStartDot, routeEndMarker].forEach((layer) => {
+                if (layer) oc_map.removeLayer(layer);
+            });
+            routeLine = routeCasing = routeStartDot = routeEndMarker = null;
+        }
+
         function clearRoute() {
-            if (routeLine) oc_map.removeLayer(routeLine);
-            if (routeCasing) oc_map.removeLayer(routeCasing);
-            routeLine = routeCasing = routeTarget = null;
-            routeChip.hidden = true;
-
-            sheetTimeBadge.hidden = true;
-            sheetDistanceBadge.hidden = true;
-
+            removeRouteLayers();
+            routeTarget = null;
+            routeState = null;
+            pendingTarget = null;
+            arrivedFor = null;
+            setTripMode(false);
+            updateHereChip();
             applyHighlights();
-            updateDestinationBtn();
+            refreshSheetActions();
         }
 
-        function setOriginFromBuilding(b) {
-            clearRoute();
-            origin = { source: 'qr', building: b, points: b.entrances };
-
-            hereChipText.textContent = `You are at ${b.title}`;
-            hereChip.hidden = false;
-
-            if (hereMarker) oc_map.removeLayer(hereMarker);
-            if (b.coords) {
-                hereMarker = L.marker(b.coords, {
-                    interactive: false,
-                    keyboard: false,
-                    zIndexOffset: -1000,
-                    icon: L.divIcon({ className: 'here-marker', html: '<span></span>', iconSize: [44, 44], iconAnchor: [22, 22] })
-                }).addTo(oc_map);
-                oc_map.flyTo([b.coords.lat, b.coords.lng], 19, { animate: true, duration: 1.2 });
-            }
-
-            applyHighlights();
-            updateDestinationBtn();
-        }
-
-        function showRoute(fromPts, target) {
-            const route = findRoute(fromPts, target.entrances);
-            if (!route) {
-                showToast(`No walkable path found to ${target.title}.`);
-                return;
-            }
-
-            clearRoute();
-            routeCasing = L.polyline(route.path, { color: '#0B793D', weight: 10, opacity: 0.4, lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(oc_map);
-            routeLine = L.polyline(route.path, { color: '#0B793D', weight: 2, opacity: 1, lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(oc_map);
-            routeTarget = target;
-
-            const metres = Math.round(route.distance);
-            const minutes = Math.max(1, Math.round(route.distance / WALK_SPEED_MS / 60));
-
-            routeChipText.textContent = `${target.title} · ${metres} m · about ${minutes} min`;
-            routeChip.hidden = false;
-
-            sheetDistanceText.textContent = `${metres} m`;
-            sheetTimeText.textContent = `${minutes} min`;
-            sheetDistanceBadge.hidden = false;
-            sheetTimeBadge.hidden = false;
-
-            applyHighlights();
-            updateDestinationBtn();
-
+        function fitRoute() {
+            if (!routeLine) return;
+            const bottom = currentSnapState === 'closed' ? 40 : getPeekHeight() + 40;
+            const cardHeight = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--trip-height')) || 104;
+            const top = (parseFloat(getComputedStyle(appHeader).top) || 12) + cardHeight + 16;
             oc_map.fitBounds(routeLine.getBounds(), {
-                paddingTopLeft: [40, $('statusStack').getBoundingClientRect().bottom + 20],
-                paddingBottomRight: [40, getPeekHeight() + 40],
+                paddingTopLeft: [40, top],
+                paddingBottomRight: [40, bottom],
                 maxZoom: 20
             });
+        }
+
+        function drawRoute(route, origin, target, fit) {
+            removeRouteLayers();
+            routeCasing = L.polyline(route.path, { color: '#ffffff', weight: 10, opacity: 0.9, lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(oc_map);
+            routeLine = L.polyline(route.path, { color: '#0B793D', weight: 6, opacity: 1, lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(oc_map);
+            if (origin.source !== 'gps') {
+                routeStartDot = L.circleMarker(route.start, { radius: 6, color: '#0B793D', weight: 3, fillColor: '#ffffff', fillOpacity: 1, interactive: false }).addTo(oc_map);
+            }
+            routeEndMarker = L.marker(route.end, { icon: END_ICON, interactive: false, keyboard: false }).addTo(oc_map);
+
+            routeTarget = target;
+            routeState = {
+                target,
+                originSource: origin.source,
+                from: origin.source === 'gps' ? origin.latlng : null,
+                distance: route.distance
+            };
+
+            updateTripCard(origin, target, route.distance);
+            setTripMode(true);
+            updateHereChip();
+
+            applyHighlights();
+            refreshSheetActions();
+            if (fit) {
+                const { metres, minutes } = formatRoute(route.distance);
+                routeAnnouncer.textContent = `Route to ${target.title}: ${metres} metres, about ${minutes} minute${minutes === 1 ? '' : 's'} on foot.`;
+                fitRoute();
+            }
+        }
+
+        function checkArrival(route, target) {
+            if (route.distance <= ARRIVE_M && arrivedFor !== target) {
+                arrivedFor = target;
+                showToast(`You have arrived at ${target.title}.`);
+            }
+        }
+
+        /* Why there is no starting point yet, and what to do about it */
+        function needOrigin(target) {
+            gps.weakNotified = false;
+            if (gps.watchId === null && !gps.denied && locationSupported(true)) {
+                pendingTarget = target;
+                showToast('Finding your location…');
+                startLocation({ recenter: false });
+            } else if (gps.watchId !== null && !gps.fix) {
+                pendingTarget = target;
+                showToast('Still finding your location…');
+            } else if (gps.fix) {
+                pendingTarget = target;
+                showToast(`GPS signal is weak (±${Math.round(gps.fix.accuracy)} m). Waiting for a better fix, or scan a QR code / tap “Start from here”.`);
+            } else {
+                showToast('Scan a QR code, or tap “Start from here” on your building, to get directions.');
+            }
+            return false;
+        }
+
+        function routeTo(target) {
+            const origin = getOrigin();
+            if (!origin) return needOrigin(target);
+            if (origin.building === target) { showToast('You are already here.'); return false; }
+
+            const result = computeRoute(origin, target);
+            if (result.error) { showToast(result.error); return false; }
+
+            arrivedFor = null;
+            drawRoute(result.route, origin, target, true);
+            checkArrival(result.route, target);
+            return true;
         }
 
         goToDestinationBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             const target = activeBuildingData;
             if (!target) return;
-
             if (routeTarget === target) { clearRoute(); return; }
-            if (!origin) {
-                showToast('Scan the QR code at your building, or turn on location, to get directions.');
+            routeTo(target);
+        });
+
+        $('tripBackBtn').addEventListener('click', clearRoute);
+
+        /* Tap the destination row to bring its details back; tap the start row to look at where you start */
+        tripToBtn.addEventListener('click', () => {
+            if (!routeTarget) return;
+            if (routeTarget.coords) oc_map.flyTo([routeTarget.coords.lat, routeTarget.coords.lng], 19, { animate: true, duration: 1 });
+            openBottomSheet(routeTarget);
+        });
+
+        tripFromBtn.addEventListener('click', () => {
+            if (!routeState) return;
+            const at = routeState.originSource === 'gps'
+                ? (gps.fix && gps.fix.latlng)
+                : (pinnedOrigin && (pinnedOrigin.door ? pinnedOrigin.door.latlng : pinnedOrigin.building.coords));
+            if (at) oc_map.flyTo([at.lat, at.lng], 19, { animate: true, duration: 1 });
+        });
+
+        /* ==========================================================
+           Starting point from a QR code or "Start from here" (location off)
+           ========================================================== */
+        function normalizeKey(value) {
+            return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+        }
+
+        function findBuilding(raw) {
+            const wanted = normalizeKey(raw);
+            if (!wanted) return null;
+            return campusBuildings.find((b) => normalizeKey(b.title) === wanted || normalizeKey(b.id) === wanted) || null;
+        }
+
+        /* "2", "entrance2" and "Entrance 2" all mean the second door */
+        function findDoorIndex(building, raw) {
+            if (!raw) return -1;
+            const key = normalizeKey(raw);
+            const byName = building.doors.findIndex((d) => normalizeKey(d.name) === key);
+            if (byName >= 0) return byName;
+            const n = parseInt(key.replace(/^entrance/, ''), 10);
+            return Number.isInteger(n) && n >= 1 && n <= building.doors.length ? n - 1 : -1;
+        }
+
+        function setPinnedOrigin(building, { source = 'manual', doorIndex = -1, fly = true } = {}) {
+            clearRoute();
+            pendingTarget = null;
+
+            const door = doorIndex >= 0 ? building.doors[doorIndex] : null;
+            pinnedOrigin = { source, building, door, points: door ? [door.latlng] : building.entrances };
+
+            if (hereMarker) oc_map.removeLayer(hereMarker);
+            hereMarker = null;
+            const at = door ? door.latlng : building.coords;
+            if (at) {
+                hereMarker = L.marker(at, { interactive: false, keyboard: false, zIndexOffset: -1000, icon: HERE_ICON }).addTo(oc_map);
+                if (fly) oc_map.flyTo([at.lat, at.lng], 19, { animate: true, duration: 1.2 });
+            }
+
+            storeSet(ORIGIN_KEY, JSON.stringify({ key: building.id || building.title, door: door ? door.name : null, source }));
+            updateHereChip();
+            applyHighlights();
+            refreshSheetActions();
+        }
+
+        function stripOriginFromUrl() {
+            try {
+                if (window.location.search) {
+                    history.replaceState(null, '', window.location.pathname + window.location.hash);
+                }
+            } catch (e) { }
+        }
+
+        function clearPinnedOrigin() {
+            pinnedOrigin = null;
+            if (hereMarker) oc_map.removeLayer(hereMarker);
+            hereMarker = null;
+            storeRemove(ORIGIN_KEY);
+            stripOriginFromUrl();
+            clearRoute();
+            updateHereChip();
+            applyHighlights();
+            refreshSheetActions();
+        }
+
+        clearOriginBtn.addEventListener('click', () => {
+            if (pinnedOrigin) clearPinnedOrigin();
+            else stopLocation();
+        });
+
+        startHereBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const b = activeBuildingData;
+            if (!b) return;
+            setPinnedOrigin(b, { source: 'manual', fly: false });
+            showToast(`Starting point set to ${b.title}. Now pick where you want to go.`);
+        });
+
+        /* ==========================================================
+           Live location (location on)
+           ========================================================== */
+        function locationSupported(announce) {
+            if (!('geolocation' in navigator)) {
+                if (announce) showToast('This browser does not support location.');
+                return false;
+            }
+            if (window.isSecureContext === false) {
+                if (announce) showToast('Location only works on a secure (https) page.');
+                return false;
+            }
+            return true;
+        }
+
+        function drawUserMarker() {
+            const { latlng, accuracy } = gps.fix;
+            const radius = Math.min(accuracy, 150);
+            if (!userMarker) {
+                userMarker = L.marker(latlng, { icon: USER_ICON, interactive: false, keyboard: false, zIndexOffset: 900 }).addTo(oc_map);
+                accuracyCircle = L.circle(latlng, { radius, color: '#2563eb', weight: 1, fillColor: '#2563eb', fillOpacity: 0.12, interactive: false }).addTo(oc_map);
+            } else {
+                userMarker.setLatLng(latlng);
+                accuracyCircle.setLatLng(latlng);
+                accuracyCircle.setRadius(radius);
+            }
+        }
+
+        function removeUserMarker() {
+            if (userMarker) oc_map.removeLayer(userMarker);
+            if (accuracyCircle) oc_map.removeLayer(accuracyCircle);
+            userMarker = accuracyCircle = null;
+        }
+
+        /* Keep an active GPS route in step with the walker */
+        function maybeReroute() {
+            if (!routeState || routeState.originSource !== 'gps' || pinnedOrigin) return;
+            const origin = getOrigin();
+            if (!origin || origin.source !== 'gps') return;
+            if (routeState.from && routeState.from.distanceTo(origin.latlng) < ROUTE_REFRESH_M) return;
+
+            const target = routeState.target;
+            const result = computeRoute(origin, target);
+            if (result.error) return;
+            drawRoute(result.route, origin, target, false);
+            checkArrival(result.route, target);
+        }
+
+        function onGpsFix(position) {
+            const c = position.coords;
+            gps.fix = { latlng: L.latLng(c.latitude, c.longitude), accuracy: c.accuracy || 9999, time: Date.now() };
+            drawUserMarker();
+
+            if (gps.recenter) {
+                gps.recenter = false;
+                oc_map.flyTo(gps.fix.latlng, Math.max(oc_map.getZoom(), 18), { animate: true, duration: 1.2 });
+            }
+
+            updateHereChip();
+
+            if (pendingTarget && gpsIsUsable() && !pinnedOrigin) {
+                const target = pendingTarget;
+                pendingTarget = null;
+                routeTo(target);
+            } else if (pendingTarget && !pinnedOrigin && !gpsIsUsable() && !gps.weakNotified) {
+                gps.weakNotified = true;
+                showToast(`GPS signal is weak (±${Math.round(gps.fix.accuracy)} m). Waiting for a better fix, or scan a QR code / tap “Start from here”.`);
+            } else {
+                maybeReroute();
+            }
+        }
+
+        function onGpsError(error) {
+            if (error.code === error.PERMISSION_DENIED) {
+                gps.denied = true;
+                stopLocation({ remember: false });
+                showToast('Location is blocked for this site. Allow it in your browser settings, or scan a QR code instead.');
                 return;
             }
-            if (origin.building === target) { showToast('You are already here.'); return; }
-            showRoute(origin.points, target);
-        });
+            const now = Date.now();
+            if (now - gps.lastErrorAt < 15000) return;
+            gps.lastErrorAt = now;
+            showToast(error.code === error.POSITION_UNAVAILABLE
+                ? 'No location signal. Turn on Location / GPS on your device.'
+                : 'Still looking for your location…');
+        }
 
-        $('clearRouteBtn').addEventListener('click', clearRoute);
+        function startLocation({ recenter = false } = {}) {
+            if (!locationSupported(true) || gps.watchId !== null) return;
+            gps.denied = false;
+            gps.recenter = recenter;
+            storeRemove(GPS_OFF_KEY);
+            gps.watchId = navigator.geolocation.watchPosition(onGpsFix, onGpsError, {
+                enableHighAccuracy: true,
+                maximumAge: 3000,
+                timeout: 20000
+            });
+            updateHereChip();
+        }
 
-        /* QR Code Scanner */
-        window.addEventListener('DOMContentLoaded', () => {
-            const params = new URLSearchParams(window.location.search);
-            const raw = params.get('from') || params.get('destination');
-            if (!raw) return;
+        function stopLocation({ remember = true } = {}) {
+            if (gps.watchId !== null) navigator.geolocation.clearWatch(gps.watchId);
+            gps.watchId = null;
+            gps.fix = null;
+            gps.recenter = false;
+            pendingTarget = null;
+            removeUserMarker();
+            if (routeState && routeState.originSource === 'gps') clearRoute();
+            if (remember) storeSet(GPS_OFF_KEY, '1');
+            updateHereChip();
+        }
 
-            const wanted = raw.trim().toLowerCase();
-            const found = campusBuildings.find((b) =>
-                b.title.trim().toLowerCase() === wanted || String(b.id).trim().toLowerCase() === wanted);
-
-            if (found) {
-                setTimeout(() => setOriginFromBuilding(found), 600);
-            } else {
-                showToast(`Could not find "${raw}" on the map.`);
+        $('myLocationBtn').addEventListener('click', () => {
+            if (gps.watchId === null) {
+                startLocation({ recenter: true });
+                return;
+            }
+            if (!gps.fix) { showToast('Still finding your location…'); return; }
+            oc_map.flyTo(gps.fix.latlng, Math.max(oc_map.getZoom(), 18), { animate: true, duration: 1 });
+            if (pinnedOrigin) {
+                showToast(`Directions start from ${pinnedOrigin.building.title}. Tap × on the chip to use your location instead.`);
             }
         });
+
+        /* If the browser already allows location, start without asking again */
+        function autoStartLocation() {
+            if (storeGet(GPS_OFF_KEY) === '1' || !locationSupported(false)) return;
+            if (!navigator.permissions || !navigator.permissions.query) return;
+            navigator.permissions.query({ name: 'geolocation' })
+                .then((status) => { if (status.state === 'granted') startLocation({ recenter: false }); })
+                .catch(() => { });
+        }
+
+        /* ==========================================================
+           Start-up: QR code in the URL, or the starting point from earlier in this tab
+           ========================================================== */
+        function initRouting() {
+            const params = new URLSearchParams(window.location.search);
+            const raw = params.get('from') || params.get('start') || params.get('here') || params.get('destination');
+
+            let wanted = null;
+            if (raw) {
+                wanted = { key: raw, door: params.get('entrance') || params.get('door'), source: 'qr', fromUrl: true };
+            } else {
+                try {
+                    const saved = JSON.parse(storeGet(ORIGIN_KEY) || 'null');
+                    if (saved && saved.key) wanted = { key: saved.key, door: saved.door, source: saved.source || 'manual', fromUrl: false };
+                } catch (e) { }
+            }
+
+            if (wanted) {
+                const building = findBuilding(wanted.key);
+                if (building) {
+                    setPinnedOrigin(building, { source: wanted.source, doorIndex: findDoorIndex(building, wanted.door), fly: true });
+                } else if (wanted.fromUrl) {
+                    showToast(`Could not find “${wanted.key}” on the map.`);
+                }
+            }
+
+            autoStartLocation();
+        }
 
         /* Toggle Labels */
         const toggleLabelsBtn = $('toggleLabelsBtn');
@@ -1303,51 +1793,6 @@
 
         updateThemeUi();
 
-        /* Geolocation */
-        function locateUser() {
-            if (!('geolocation' in navigator)) {
-                alert("Geolocation is not supported by your browser.");
-                return;
-            }
-
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-                    const accuracy = position.coords.accuracy;
-
-                    if (userMarker) oc_map.removeLayer(userMarker);
-                    if (accuracyCircle) oc_map.removeLayer(accuracyCircle);
-
-                    accuracyCircle = L.circle([lat, lng], {
-                        radius: accuracy,
-                        color: '#0B793D',
-                        fillColor: '#0B793D',
-                        fillOpacity: 0.15
-                    }).addTo(oc_map);
-
-                    userMarker = L.marker([lat, lng]).addTo(oc_map)
-                        .bindPopup("You are here!")
-                        .openPopup();
-
-                    oc_map.flyTo([lat, lng], 18, { animate: true, duration: 1.5 });
-                },
-                (error) => {
-                    console.warn("Geolocation Error:", error);
-                    if (error.code === error.POSITION_UNAVAILABLE) {
-                        alert("Device location is turned off. Please turn on Location/GPS.");
-                    } else if (error.code === error.PERMISSION_DENIED) {
-                        alert("Location access was denied in your browser settings.");
-                    } else {
-                        alert("Unable to acquire location signal.");
-                    }
-                },
-                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-            );
-        }
-
-        $('myLocationBtn').addEventListener('click', locateUser);
-
         /* Info Modals */
         const infoModalTitle = $('infoModalTitle');
         const infoModalBody = $('infoModalBody');
@@ -1379,6 +1824,8 @@
         });
 
         $('closeInfoBtn').addEventListener('click', () => closeModal(infoModal));
+
+        initRouting();
     </script>
 </body>
 </html>

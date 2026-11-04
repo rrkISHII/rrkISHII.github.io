@@ -1423,15 +1423,65 @@ body.dark-theme .toast {
     cursor: default;
 }
 
-.user-dot span {
-    display: block;
-    width: 22px;
-    height: 22px;
+/* Google-Maps style location marker: blue dot plus a beam that follows the phone's heading */
+.gm-user {
+    background: none;
+    border: none;
+}
+
+.gm-user .gm-beam {
+    position: absolute;
+    inset: 0;
     border-radius: 50%;
-    background: #2563eb;
+    opacity: 0;
+    transform: rotate(var(--gm-heading, 0deg));
+    transition: transform 0.15s linear, opacity 0.3s ease;
+    background: conic-gradient(from -32deg at 50% 50%,
+        rgba(66, 133, 244, 0.85) 0deg 64deg,
+        transparent 64deg 360deg);
+    -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 0 9px, #000 12px, transparent 32px);
+    mask-image: radial-gradient(circle at 50% 50%, transparent 0 9px, #000 12px, transparent 32px);
+    pointer-events: none;
+}
+
+.gm-user.has-heading .gm-beam {
+    opacity: 1;
+}
+
+.gm-user .gm-dot {
+    position: absolute;
+    left: 23px;
+    top: 23px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #4285f4;
     border: 3px solid #ffffff;
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.35), 0 2px 6px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.45);
     box-sizing: border-box;
+}
+
+/* invisible probes used by the script to measure rotation */
+.gm-user .gm-center,
+.gm-user .gm-axis,
+.gm-ref {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.gm-user .gm-center { left: 31px; top: 31px; }
+.gm-user .gm-axis { left: 31px; top: 0; }
+
+.gm-ref {
+    background: none;
+    border: none;
+}
+
+.here-chip.is-gps > i {
+    color: #4285f4;
 }
 
 .route-end-marker span {

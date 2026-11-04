@@ -1784,10 +1784,13 @@
       const WALK_SPEED_MS = 1.3;
       const MAX_OFF_NETWORK_M = 90; // GPS fixes further than this from any walkway are not routed
       const GPS_MAX_ACCURACY_M = 50; // worse fixes are shown on the map but not used as a starting point
-      const ROUTE_REFRESH_M = 6; // re-plan a live route after the walker moves this far
+      const ROUTE_REFRESH_M = 3; // re-plan a live route after the walker moves this far
       const ARRIVE_M = 15;
       const ORIGIN_KEY = "ocnpOrigin";
       const GPS_OFF_KEY = "ocnpGpsOff";
+      const LOC_MODE_KEY = "ocnpLoc"; // "on" | "off", chosen on the index page
+      const FOLLOW_ZOOM = 19; // camera zoom while following the walker
+      const SNAP_DOT_M = 25; // while navigating, the dot is pinned to the walkway if it is this close
 
       if (window.emailjs) {
         emailjs.init(EMAIL_CONFIG.publicKey);
@@ -2593,6 +2596,7 @@
             ...best.t.tail,
           ],
           start: src.lead[0],
+          snap: src.lead.length > 1 ? src.lead[src.lead.length - 1] : null,
           end: best.t.tail[best.t.tail.length - 1],
         };
       }
@@ -2621,9 +2625,20 @@
           return { error: `Can't find a walkway near ${target.title}.` };
 
         const route = planRoute(sources, targets);
-        return route
-          ? { route }
-          : { error: `No walkable path found to ${target.title}.` };
+        if (!route) return { error: `No walkable path found to ${target.title}.` };
+
+        /* Like Google Maps: a walker close to a walkway is drawn ON it, and the line starts at the dot,
+           so the part already walked disappears behind them. */
+        if (origin.source === "gps" && route.snap) {
+          const off = origin.latlng.distanceTo(route.snap);
+          if (off <= SNAP_DOT_M) {
+            route.path = route.path.slice(1);
+            route.start = route.snap;
+            route.dot = route.snap;
+            route.distance = Math.max(0, route.distance - off);
+          }
+        }
+        return { route };
       }
 
       /* Route state & display */
@@ -2640,11 +2655,20 @@
         fillOpacity: 0.35,
       };
 
+      /* Google-Maps style "you are here": blue dot + a beam that points where the phone is facing.
+         .gm-center / .gm-axis are invisible probes used to measure the icon's real on-screen rotation. */
       const USER_ICON = L.divIcon({
-        className: "user-dot",
-        html: "<span></span>",
-        iconSize: [22, 22],
-        iconAnchor: [11, 11],
+        className: "gm-user",
+        html: '<div class="gm-beam"></div><div class="gm-dot"></div><i class="gm-center"></i><i class="gm-axis"></i>',
+        iconSize: [64, 64],
+        iconAnchor: [32, 32],
+      });
+      /* Invisible marker 40 m north of the dot, used to find where north points on a rotated map */
+      const NORTH_REF_ICON = L.divIcon({
+        className: "gm-ref",
+        html: "",
+        iconSize: [2, 2],
+        iconAnchor: [1, 1],
       });
       const HERE_ICON = L.divIcon({
         className: "here-marker",
@@ -2686,6 +2710,9 @@
       let pendingTarget = null; // destination to route to as soon as a GPS fix arrives
       let arrivedFor = null;
       let toastTimer = null;
+      let navDot = null; // where the dot is drawn while navigating (pinned to the walkway)
+      let locMode = null; // "on" | "off" | null, from the index page
+      let lastOriginKind = null; // "gps" | "pin" | null
 
       const gps = {
         watchId: null,
@@ -2705,12 +2732,12 @@
       }
       function storeSet(key, value) {
         try {
-          localStorage.setItem(key, value);
+          sessionStorage.setItem(key, value);
         } catch (e) {}
       }
       function storeRemove(key) {
         try {
-          localStorage.removeItem(key);
+          sessionStorage.removeItem(key);
         } catch (e) {}
       }
 
@@ -2732,22 +2759,50 @@
         return !!(gps.fix && gps.fix.accuracy <= GPS_MAX_ACCURACY_M);
       }
 
-      /* Where does a new route start? QR / "Start from here" first, otherwise a usable GPS fix. */
+      function gpsOnCampus() {
+        return (
+          gpsIsUsable() && !!snapToNetwork(gps.fix.latlng, MAX_OFF_NETWORK_M)
+        );
+      }
+
+      /* Where does a new route start?
+         1. "Start from here" (manual) always wins.
+         2. Live location, once it is accurate and on the campus walkways.
+         3. The QR code's building: the stand-in while location is off, still searching, or weak. */
       function getOrigin() {
-        if (pinnedOrigin) return pinnedOrigin;
-        if (gpsIsUsable())
+        if (pinnedOrigin && pinnedOrigin.source === "manual")
+          return pinnedOrigin;
+        if (gpsOnCampus())
           return {
             source: "gps",
             latlng: gps.fix.latlng,
             accuracy: gps.fix.accuracy,
           };
-        return null;
+        return pinnedOrigin;
+      }
+
+      function pinIsActive() {
+        const o = getOrigin();
+        return !!o && o.source !== "gps";
       }
 
       function applyHighlights() {
         campusBuildings.forEach((b) => geoLayer.resetStyle(b.layer));
-        if (pinnedOrigin) pinnedOrigin.building.layer.setStyle(STYLE_HERE);
+        const pin = pinIsActive();
+        if (pin) pinnedOrigin.building.layer.setStyle(STYLE_HERE);
         if (routeTarget) routeTarget.layer.setStyle(STYLE_DEST);
+        if (hereMarker) hereMarker.setOpacity(pin ? 1 : 0);
+      }
+
+      /* Called whenever the fix changes: switches between "QR building" and "live location" */
+      function refreshOriginMode() {
+        const o = getOrigin();
+        const kind = o ? (o.source === "gps" ? "gps" : "pin") : null;
+        if (kind === lastOriginKind) return;
+        lastOriginKind = kind;
+        applyHighlights();
+        updateHereChip();
+        refreshSheetActions();
       }
 
       function updateDestinationBtn() {
@@ -2755,7 +2810,7 @@
         let icon = "fa-location-arrow",
           label = "Go to Destination",
           disabled = false;
-        if (b && pinnedOrigin && pinnedOrigin.building === b) {
+        if (b && pinIsActive() && pinnedOrigin.building === b) {
           icon = "fa-location-dot";
           label = "You are here";
           disabled = true;
@@ -2770,7 +2825,7 @@
       function updateStartHereBtn() {
         const b = activeBuildingData;
         startHereBtn.hidden =
-          !b || !!(pinnedOrigin && pinnedOrigin.building === b);
+          !b || !!(pinIsActive() && pinnedOrigin.building === b);
       }
 
       /* Time and distance badges only belong to the building the route leads to */
@@ -2801,15 +2856,25 @@
           icon = "fa-location-dot",
           label = "",
           gpsMode = false;
-        if (pinnedOrigin) {
+        const o = getOrigin();
+        if (o && o.source === "gps") {
+          gpsMode = true;
+          icon = "fa-location-crosshairs";
+          text = `Using your location · ±${Math.round(gps.fix.accuracy)} m`;
+          label = "Turn off location";
+        } else if (pinnedOrigin) {
           text = `You are at ${pinnedOrigin.building.title}`;
+          if (gps.watchId !== null)
+            text += gps.fix
+              ? " · waiting for a better GPS fix"
+              : " · finding exact location…";
           label = "Clear starting point";
         } else if (gps.fix) {
           gpsMode = true;
           icon = "fa-location-crosshairs";
           const acc = Math.round(gps.fix.accuracy);
           text = gpsIsUsable()
-            ? `Using your location · ±${acc} m`
+            ? `Not on the campus walkways · ±${acc} m`
             : `Weak GPS signal · ±${acc} m`;
           label = "Turn off location";
         } else if (gps.watchId !== null) {
@@ -2873,7 +2938,11 @@
         routeState = null;
         pendingTarget = null;
         arrivedFor = null;
+        navDot = null;
         setTripMode(false);
+        stopFollow();
+        follow.dismissed = false;
+        if (gps.fix) drawUserMarker(); // the dot goes back to the real fix
         updateHereChip();
         applyHighlights();
         refreshSheetActions();
@@ -2899,44 +2968,67 @@
       }
 
       function drawRoute(route, origin, target, fit) {
-        removeRouteLayers();
-        routeCasing = L.polyline(route.path, {
-          color: "#ffffff",
-          weight: 10,
-          opacity: 0.9,
-          lineCap: "round",
-          lineJoin: "round",
-          interactive: false,
-        }).addTo(oc_map);
-        routeLine = L.polyline(route.path, {
-          color: "#0B793D",
-          weight: 6,
-          opacity: 1,
-          lineCap: "round",
-          lineJoin: "round",
-          interactive: false,
-        }).addTo(oc_map);
-        if (origin.source !== "gps") {
-          routeStartDot = L.circleMarker(route.start, {
-            radius: 6,
-            color: "#0B793D",
-            weight: 3,
-            fillColor: "#ffffff",
-            fillOpacity: 1,
+        const prev = routeState && routeState.target === target ? routeState : null;
+        const began =
+          prev && prev.began
+            ? prev.began
+            : origin.source === "gps"
+              ? origin.latlng
+              : null;
+        const inPlace =
+          !fit &&
+          routeLine &&
+          origin.source === "gps" &&
+          prev &&
+          prev.originSource === "gps";
+
+        if (inPlace) {
+          /* Live navigation: just move the line, no flicker */
+          routeCasing.setLatLngs(route.path);
+          routeLine.setLatLngs(route.path);
+          routeEndMarker.setLatLng(route.end);
+        } else {
+          removeRouteLayers();
+          routeCasing = L.polyline(route.path, {
+            color: "#ffffff",
+            weight: 10,
+            opacity: 0.9,
+            lineCap: "round",
+            lineJoin: "round",
             interactive: false,
           }).addTo(oc_map);
+          routeLine = L.polyline(route.path, {
+            color: "#0B793D",
+            weight: 6,
+            opacity: 1,
+            lineCap: "round",
+            lineJoin: "round",
+            interactive: false,
+          }).addTo(oc_map);
+          if (origin.source !== "gps") {
+            routeStartDot = L.circleMarker(route.start, {
+              radius: 6,
+              color: "#0B793D",
+              weight: 3,
+              fillColor: "#ffffff",
+              fillOpacity: 1,
+              interactive: false,
+            }).addTo(oc_map);
+          }
+          routeEndMarker = L.marker(route.end, {
+            icon: END_ICON,
+            interactive: false,
+            keyboard: false,
+          }).addTo(oc_map);
         }
-        routeEndMarker = L.marker(route.end, {
-          icon: END_ICON,
-          interactive: false,
-          keyboard: false,
-        }).addTo(oc_map);
 
+        navDot = origin.source === "gps" ? route.dot || origin.latlng : null;
         routeTarget = target;
         routeState = {
           target,
           originSource: origin.source,
           from: origin.source === "gps" ? origin.latlng : null,
+          began,
           distance: route.distance,
         };
 
@@ -2957,13 +3049,19 @@
         if (route.distance <= ARRIVE_M && arrivedFor !== target) {
           arrivedFor = target;
           showToast(`You have arrived at ${target.title}.`);
+          stopFollow();
         }
       }
 
       /* Why there is no starting point yet, and what to do about it */
       function needOrigin(target) {
         gps.weakNotified = false;
-        if (gps.watchId === null && !gps.denied && locationSupported(true)) {
+        if (
+          gps.watchId === null &&
+          locMode !== "off" &&
+          !gps.denied &&
+          locationSupported(true)
+        ) {
           pendingTarget = target;
           showToast("Finding your location…");
           startLocation({ recenter: false });
@@ -2973,7 +3071,9 @@
         } else if (gps.fix) {
           pendingTarget = target;
           showToast(
-            `GPS signal is weak (±${Math.round(gps.fix.accuracy)} m). Waiting for a better fix, or scan a QR code / tap “Start from here”.`,
+            gpsIsUsable()
+              ? "You seem to be away from the campus walkways. Scan a QR code, or tap “Start from here” on your building."
+              : `GPS signal is weak (±${Math.round(gps.fix.accuracy)} m). Waiting for a better fix, or scan a QR code / tap “Start from here”.`,
           );
         } else {
           showToast(
@@ -3005,6 +3105,7 @@
 
       goToDestinationBtn.addEventListener("click", (e) => {
         e.stopPropagation();
+        enableCompass(); // a tap is needed to unlock the compass on iPhones
         const target = activeBuildingData;
         if (!target) return;
         if (routeTarget === target) {
@@ -3146,8 +3247,10 @@
       }
 
       clearOriginBtn.addEventListener("click", () => {
-        if (pinnedOrigin) clearPinnedOrigin();
-        else stopLocation();
+        const o = getOrigin();
+        if (o && o.source !== "gps") clearPinnedOrigin();
+        else if (gps.watchId !== null) stopLocation();
+        else if (pinnedOrigin) clearPinnedOrigin();
       });
 
       startHereBtn.addEventListener("click", (e) => {
@@ -3176,44 +3279,294 @@
         return true;
       }
 
+      const follow = { on: false, dismissed: false, flyUntil: 0 };
+      const heading = {
+        value: null, // smoothed compass bearing, degrees clockwise from north
+        target: null,
+        ui: 0, // unwrapped angle given to the CSS, so the beam never spins the long way round
+        offset: 0, // north-on-screen minus icon rotation, measured from the DOM
+        raf: 0,
+        lastCompassAt: 0,
+        listening: false,
+        evt: null,
+        tapHooked: false,
+      };
+      let northRef = null;
+      let moveAnim = 0;
+      let measureRaf = 0;
+
+      function angleDiff(a, b) {
+        return ((((a - b) % 360) + 540) % 360) - 180;
+      }
+
+      function northOf(ll) {
+        return L.latLng(ll.lat + 40 / KY, ll.lng);
+      }
+
+      /* Where the dot is drawn: pinned to the walkway while navigating, otherwise the raw fix */
+      function userDisplayLatLng() {
+        return routeState && routeState.originSource === "gps" && navDot
+          ? navDot
+          : gps.fix.latlng;
+      }
+
+      function placeUser(ll) {
+        userMarker.setLatLng(ll);
+        if (northRef) northRef.setLatLng(northOf(ll));
+      }
+
+      /* Glide from one fix to the next instead of jumping, so the dot walks with the person */
+      function moveUserMarker(to) {
+        cancelAnimationFrame(moveAnim);
+        const from = userMarker.getLatLng();
+        const dist = from.distanceTo(to);
+        if (dist < 0.2 || dist > 80) {
+          placeUser(to);
+          scheduleMeasure();
+          return;
+        }
+        const t0 = performance.now();
+        const dur = 900;
+        const step = (now) => {
+          const k = Math.min(1, (now - t0) / dur);
+          placeUser(
+            L.latLng(
+              from.lat + (to.lat - from.lat) * k,
+              from.lng + (to.lng - from.lng) * k,
+            ),
+          );
+          if (k < 1) moveAnim = requestAnimationFrame(step);
+          else scheduleMeasure();
+        };
+        moveAnim = requestAnimationFrame(step);
+      }
+
       function drawUserMarker() {
-        const { latlng, accuracy } = gps.fix;
-        const radius = Math.min(accuracy, 150);
+        if (!gps.fix) return;
+        const at = userDisplayLatLng();
+        const radius = Math.min(gps.fix.accuracy, 150);
         if (!userMarker) {
-          userMarker = L.marker(latlng, {
+          userMarker = L.marker(at, {
             icon: USER_ICON,
             interactive: false,
             keyboard: false,
             zIndexOffset: 900,
           }).addTo(oc_map);
-          accuracyCircle = L.circle(latlng, {
+          northRef = L.marker(northOf(at), {
+            icon: NORTH_REF_ICON,
+            interactive: false,
+            keyboard: false,
+            zIndexOffset: -2000,
+          }).addTo(oc_map);
+          accuracyCircle = L.circle(gps.fix.latlng, {
             radius,
-            color: "#2563eb",
+            color: "#4285f4",
             weight: 1,
-            fillColor: "#2563eb",
+            fillColor: "#4285f4",
             fillOpacity: 0.12,
             interactive: false,
           }).addTo(oc_map);
         } else {
-          userMarker.setLatLng(latlng);
-          accuracyCircle.setLatLng(latlng);
+          moveUserMarker(at);
+          accuracyCircle.setLatLng(gps.fix.latlng);
           accuracyCircle.setRadius(radius);
         }
+        followCamera(at);
+        scheduleMeasure();
       }
 
       function removeUserMarker() {
+        cancelAnimationFrame(moveAnim);
         if (userMarker) oc_map.removeLayer(userMarker);
+        if (northRef) oc_map.removeLayer(northRef);
         if (accuracyCircle) oc_map.removeLayer(accuracyCircle);
-        userMarker = accuracyCircle = null;
+        userMarker = northRef = accuracyCircle = null;
       }
 
-      /* Keep an active GPS route in step with the walker */
-      function maybeReroute() {
-        if (!routeState || routeState.originSource !== "gps" || pinnedOrigin)
+      /* ---- Direction beam (compass) ---- */
+      /* Screen angles are measured from the DOM, so the beam is right whether or not the
+         rotate plugin turns marker icons with the map. */
+      function measureNorth() {
+        measureRaf = 0;
+        if (!userMarker || !northRef) return;
+        const el = userMarker.getElement();
+        const ref = northRef.getElement();
+        if (!el || !ref) return;
+        const c = el.querySelector(".gm-center");
+        const a = el.querySelector(".gm-axis");
+        if (!c || !a) return;
+        const mid = (node) => {
+          const r = node.getBoundingClientRect();
+          return [r.left + r.width / 2, r.top + r.height / 2];
+        };
+        const [cx, cy] = mid(c);
+        const [ax, ay] = mid(a);
+        const [nx, ny] = mid(ref);
+        const psi = (Math.atan2(ax - cx, -(ay - cy)) * 180) / Math.PI; // icon rotation
+        const phi = (Math.atan2(nx - cx, -(ny - cy)) * 180) / Math.PI; // north on screen
+        if (isFinite(psi) && isFinite(phi)) heading.offset = phi - psi;
+        renderBeam();
+      }
+
+      function scheduleMeasure() {
+        if (!measureRaf) measureRaf = requestAnimationFrame(measureNorth);
+      }
+
+      function renderBeam() {
+        if (heading.value === null || !userMarker) return;
+        const el = userMarker.getElement();
+        if (!el) return;
+        heading.ui += angleDiff(heading.value + heading.offset, heading.ui);
+        el.style.setProperty("--gm-heading", heading.ui.toFixed(1) + "deg");
+        el.classList.add("has-heading");
+      }
+
+      function applyHeading() {
+        heading.raf = 0;
+        if (heading.value === null) heading.value = heading.target;
+        else
+          heading.value =
+            (heading.value + angleDiff(heading.target, heading.value) * 0.35 + 360) %
+            360;
+        renderBeam();
+      }
+
+      function feedHeading(deg, source) {
+        const now = Date.now();
+        if (source === "compass") heading.lastCompassAt = now;
+        else if (now - heading.lastCompassAt < 3000) return; // compass is better while it works
+        heading.target = ((deg % 360) + 360) % 360;
+        if (!heading.raf) heading.raf = requestAnimationFrame(applyHeading);
+      }
+
+      /* Compass bearing of the direction the phone is facing, corrected for tilt (W3C method) */
+      function tiltCompassHeading(alpha, beta, gamma) {
+        const r = Math.PI / 180;
+        const cA = Math.cos(alpha * r),
+          sA = Math.sin(alpha * r),
+          sB = Math.sin(beta * r),
+          cB = Math.cos(beta * r),
+          cG = Math.cos(gamma * r),
+          sG = Math.sin(gamma * r);
+        const rA = -cA * sG - sA * sB * cG;
+        const rB = -sA * sG + cA * sB * cG;
+        if (Math.abs(rA) < 1e-6 && Math.abs(rB) < 1e-6) return (360 - alpha) % 360;
+        return ((Math.atan2(rA, rB) * 180) / Math.PI + 360) % 360;
+      }
+
+      function onOrientation(e) {
+        let h = null;
+        if (typeof e.webkitCompassHeading === "number" && !isNaN(e.webkitCompassHeading)) {
+          h = e.webkitCompassHeading; // iPhone: already clockwise from north
+        } else if (
+          typeof e.alpha === "number" &&
+          (e.absolute || e.type === "deviceorientationabsolute")
+        ) {
+          h =
+            typeof e.beta === "number" && typeof e.gamma === "number"
+              ? tiltCompassHeading(e.alpha, e.beta, e.gamma)
+              : (360 - e.alpha) % 360;
+        }
+        if (h === null) return;
+        const screenAngle = (screen.orientation && screen.orientation.angle) || 0;
+        feedHeading(h + screenAngle, "compass");
+      }
+
+      function enableCompass() {
+        if (heading.listening || !window.DeviceOrientationEvent) return;
+        const evt =
+          "ondeviceorientationabsolute" in window
+            ? "deviceorientationabsolute"
+            : "deviceorientation";
+        const start = () => {
+          if (heading.listening) return;
+          heading.listening = true;
+          heading.evt = evt;
+          window.addEventListener(evt, onOrientation, true);
+        };
+        const DOE = window.DeviceOrientationEvent;
+        if (typeof DOE.requestPermission === "function") {
+          // iOS only allows this from a tap; outside a tap it simply fails quietly
+          DOE.requestPermission()
+            .then((state) => {
+              if (state === "granted") start();
+            })
+            .catch(() => {});
+        } else {
+          start();
+        }
+      }
+
+      function stopCompass() {
+        if (heading.listening && heading.evt)
+          window.removeEventListener(heading.evt, onOrientation, true);
+        heading.listening = false;
+        heading.value = heading.target = null;
+        heading.ui = 0;
+      }
+
+      oc_map.on("move zoom rotate", scheduleMeasure);
+
+      /* ---- Camera follows the walker while navigating ---- */
+      function updateLocBtn() {
+        const btn = $("myLocationBtn");
+        btn.classList.toggle("active", follow.on);
+        btn.setAttribute("aria-pressed", String(follow.on));
+        btn.title = follow.on ? "Following your location" : "Go to my location";
+      }
+
+      function startFollow() {
+        if (!gps.fix) return;
+        follow.on = true;
+        follow.dismissed = false;
+        follow.flyUntil = Date.now() + 900;
+        updateLocBtn();
+        oc_map.flyTo(
+          userDisplayLatLng(),
+          Math.max(oc_map.getZoom(), FOLLOW_ZOOM),
+          { animate: true, duration: 0.8 },
+        );
+      }
+
+      function stopFollow() {
+        if (!follow.on) return;
+        follow.on = false;
+        updateLocBtn();
+      }
+
+      function followCamera(at) {
+        if (!follow.on || Date.now() < follow.flyUntil) return;
+        oc_map.panTo(at, {
+          animate: true,
+          duration: 0.9,
+          easeLinearity: 1,
+          noMoveStart: true,
+        });
+      }
+
+      /* Dragging the map by hand lets go of the walker (tap the crosshair to follow again) */
+      oc_map.on("dragstart", () => {
+        if (follow.on) {
+          stopFollow();
+          follow.dismissed = true;
+        }
+      });
+
+      /* Once the walker actually starts moving, switch from the route overview to following them */
+      function autoFollow(at) {
+        if (follow.on || follow.dismissed || !routeState || !routeState.began)
           return;
+        if (routeState.began.distanceTo(at) >= 4) startFollow();
+      }
+
+      /* Keep an active route in step with the walker: the line shrinks as they walk */
+      function maybeReroute() {
+        if (!routeState) return;
         const origin = getOrigin();
-        if (!origin || origin.source !== "gps") return;
+        if (!origin || origin.source !== "gps") return; // QR / manual routes are fixed
+        const switching = routeState.originSource !== "gps"; // live location just took over from the QR building
         if (
+          !switching &&
           routeState.from &&
           routeState.from.distanceTo(origin.latlng) < ROUTE_REFRESH_M
         )
@@ -3224,6 +3577,7 @@
         if (result.error) return;
         drawRoute(result.route, origin, target, false);
         checkArrival(result.route, target);
+        autoFollow(origin.latlng);
       }
 
       function onGpsFix(position) {
@@ -3233,28 +3587,25 @@
           accuracy: c.accuracy || 9999,
           time: Date.now(),
         };
-        drawUserMarker();
+        if (typeof c.heading === "number" && !isNaN(c.heading) && c.speed > 0.8)
+          feedHeading(c.heading, "gps");
+
+        refreshOriginMode();
 
         if (gps.recenter) {
           gps.recenter = false;
-          oc_map.flyTo(gps.fix.latlng, Math.max(oc_map.getZoom(), 18), {
-            animate: true,
-            duration: 1.2,
-          });
+          if (gpsOnCampus() || !pinnedOrigin)
+            oc_map.flyTo(gps.fix.latlng, Math.max(oc_map.getZoom(), 18), {
+              animate: true,
+              duration: 1.2,
+            });
         }
 
-        updateHereChip();
-
-        if (pendingTarget && gpsIsUsable() && !pinnedOrigin) {
+        if (pendingTarget && getOrigin()) {
           const target = pendingTarget;
           pendingTarget = null;
           routeTo(target);
-        } else if (
-          pendingTarget &&
-          !pinnedOrigin &&
-          !gpsIsUsable() &&
-          !gps.weakNotified
-        ) {
+        } else if (pendingTarget && !gpsIsUsable() && !gps.weakNotified) {
           gps.weakNotified = true;
           showToast(
             `GPS signal is weak (±${Math.round(gps.fix.accuracy)} m). Waiting for a better fix, or scan a QR code / tap “Start from here”.`,
@@ -3262,6 +3613,9 @@
         } else {
           maybeReroute();
         }
+
+        drawUserMarker();
+        updateHereChip();
       }
 
       function onGpsError(error) {
@@ -3287,16 +3641,19 @@
         if (!locationSupported(true) || gps.watchId !== null) return;
         gps.denied = false;
         gps.recenter = recenter;
+        locMode = "on";
+        storeSet(LOC_MODE_KEY, "on");
         storeRemove(GPS_OFF_KEY);
-        gps.watchId = navigator.geolocation.watchPosition(
-          onGpsFix,
-          onGpsError,
-          {
-            enableHighAccuracy: true,
-            maximumAge: 3000,
-            timeout: 20000,
-          },
-        );
+        enableCompass();
+        if (!heading.tapHooked) {
+          heading.tapHooked = true;
+          document.addEventListener("click", enableCompass); // iPhones ask for the compass on a tap
+        }
+        gps.watchId = navigator.geolocation.watchPosition(onGpsFix, onGpsError, {
+          enableHighAccuracy: true,
+          maximumAge: 1000,
+          timeout: 20000,
+        });
         updateHereChip();
       }
 
@@ -3306,13 +3663,22 @@
         gps.fix = null;
         gps.recenter = false;
         pendingTarget = null;
+        navDot = null;
+        stopFollow();
+        stopCompass();
         removeUserMarker();
         if (routeState && routeState.originSource === "gps") clearRoute();
-        if (remember) storeSet(GPS_OFF_KEY, "1");
+        if (remember) {
+          locMode = "off";
+          storeSet(LOC_MODE_KEY, "off");
+          storeSet(GPS_OFF_KEY, "1");
+        }
+        refreshOriginMode();
         updateHereChip();
       }
 
       $("myLocationBtn").addEventListener("click", () => {
+        enableCompass();
         if (gps.watchId === null) {
           startLocation({ recenter: true });
           return;
@@ -3321,13 +3687,17 @@
           showToast("Still finding your location…");
           return;
         }
+        if (routeState && routeState.originSource === "gps") {
+          startFollow();
+          return;
+        }
         oc_map.flyTo(gps.fix.latlng, Math.max(oc_map.getZoom(), 18), {
           animate: true,
           duration: 1,
         });
-        if (pinnedOrigin) {
+        if (pinnedOrigin && pinnedOrigin.source === "manual") {
           showToast(
-            `Directions start from ${pinnedOrigin.building.title}. Tap × on the chip to use your location instead.`,
+            `Directions start from ${pinnedOrigin.building.title}. Tap × on the chip to use your live location instead.`,
           );
         }
       });
@@ -3349,6 +3719,16 @@
            ========================================================== */
       function initRouting() {
         const params = new URLSearchParams(window.location.search);
+
+        /* The index page tells us what the visitor chose: location on or off */
+        const locParam = params.get("loc");
+        if (locParam === "on" || locParam === "off") {
+          locMode = locParam;
+          storeSet(LOC_MODE_KEY, locParam);
+        } else {
+          locMode = storeGet(LOC_MODE_KEY);
+        }
+
         const raw =
           params.get("from") ||
           params.get("start") ||
@@ -3389,7 +3769,10 @@
           }
         }
 
-        autoStartLocation();
+        /* Location on: live position takes over from the QR building as soon as it is accurate.
+           Location off: the QR building is the starting point and GPS stays off (the crosshair turns it on). */
+        if (locMode === "on") startLocation({ recenter: true });
+        else if (locMode !== "off") autoStartLocation();
       }
 
       /* Toggle Labels */

@@ -58,6 +58,8 @@
                 </p>
             </div>
 
+            <p id="locNote" role="alert" hidden style="font-size: 13px; color: #b3261e; line-height: 1.4; margin-bottom: 14px;"></p>
+
             <div class="modal-actions" style="display: flex; justify-content: flex-end; gap: 12px;">
                 <button class="text-btn" id="noThanksBtn" style="background: none; border: none; font-size: 14px; font-weight: 600; cursor: pointer; color: #666; padding: 10px 16px;">NO THANKS</button>
                 <button class="send-btn" id="turnOnBtn" style="width: auto; padding: 10px 20px; margin-top: 0;">TURN ON</button>
@@ -71,9 +73,31 @@
         const closeModalX = document.getElementById('closeModalX');
         const noThanksBtn = document.getElementById('noThanksBtn');
         const turnOnBtn = document.getElementById('turnOnBtn');
+        const locNote = document.getElementById('locNote');
+
+        /* A QR code opens this page as index.html?from=<building>.
+           Whatever the visitor chooses, that query is passed on to main_page.html untouched,
+           plus loc=on / loc=off so the map knows which mode to start in. */
+        function goToMap(mode) {
+            const params = new URLSearchParams(window.location.search);
+            params.set('loc', mode);
+            try { sessionStorage.setItem('ocnpLoc', mode); } catch (e) {}
+            window.location.href = 'main_page.html?' + params.toString();
+        }
+
+        function showNote(message) {
+            locNote.textContent = message;
+            locNote.hidden = false;
+        }
+
+        function resetTurnOn() {
+            turnOnBtn.disabled = false;
+            turnOnBtn.textContent = 'TURN ON';
+        }
 
         // Show popup when ENTER is clicked
         enterBtn.addEventListener('click', () => {
+            locNote.hidden = true;
             locationModal.classList.add('active');
         });
 
@@ -82,48 +106,47 @@
             locationModal.classList.remove('active');
         });
 
-        // Proceed to main page on NO THANKS
-        noThanksBtn.addEventListener('click', () => {
-            window.location.href = 'main_page.html';
-        });
+        // Location OFF: go straight to the map. The ?from=<building> in the QR link is the starting point.
+        noThanksBtn.addEventListener('click', () => goToMap('off'));
 
-        // Request browser geolocation when TURN ON is clicked
+        // Location ON: ask the browser for permission / GPS, then open the map in live-location mode
         turnOnBtn.addEventListener('click', () => {
-            if ('geolocation' in navigator) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        // Success: GPS is ON and permission granted
-                        localStorage.setItem('userLat', position.coords.latitude);
-                        localStorage.setItem('userLng', position.coords.longitude);
-                        localStorage.setItem('locationEnabled', 'true');
+            locNote.hidden = true;
 
-                        window.location.href = 'main_page.html';
-                    },
-                    (error) => {
-                        // Location error handling
-                        console.warn("Geolocation error:", error);
-
-                        if (error.code === error.POSITION_UNAVAILABLE) {
-                            alert("Device location is turned off. Please turn on Location/GPS in your phone's drop-down menu and try again.");
-                        } else if (error.code === error.PERMISSION_DENIED) {
-                            alert("Location access was denied in your browser settings.");
-                        } else {
-                            alert("Unable to acquire location signal. Proceeding to map.");
-                        }
-
-                        // Still proceed to main page
-                        window.location.href = 'main_page.html';
-                    },
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 10000,
-                        maximumAge: 0
-                    }
-                );
-            } else {
-                alert("Geolocation is not supported by your browser.");
-                window.location.href = 'main_page.html';
+            if (!('geolocation' in navigator)) {
+                alert('Geolocation is not supported by your browser.');
+                goToMap('off');
+                return;
             }
+
+            turnOnBtn.disabled = true;
+            turnOnBtn.textContent = 'LOCATING…';
+
+            navigator.geolocation.getCurrentPosition(
+                () => {
+                    // GPS is on and permission is granted. main_page.html keeps tracking from here.
+                    goToMap('on');
+                },
+                (error) => {
+                    console.warn('Geolocation error:', error);
+
+                    if (error.code === error.PERMISSION_DENIED) {
+                        // Blocked: continue with the QR starting point only
+                        alert('Location access was denied in your browser settings. Continuing with the QR code location.');
+                        goToMap('off');
+                        return;
+                    }
+
+                    // GPS switched off or no signal yet: stay here so they can fix it and try again
+                    resetTurnOn();
+                    showNote("We couldn't get a location signal. Turn on Location / GPS in your phone's drop-down menu, then tap TURN ON again, or tap NO THANKS to continue with the QR code.");
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
         });
     </script>
 </body>

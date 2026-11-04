@@ -10,6 +10,20 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <title>Olivarez Navigation Portal</title>
 
+    <!-- Entry gate: every visit passes through index.html once per tab, so the visitor
+         always picks location on/off first. A QR link (?from=<building>) is carried along.
+         index.html adds loc=on|off when it sends the visitor back here, so this never loops. -->
+    <script>
+      (function () {
+        try {
+          var mode = new URLSearchParams(window.location.search).get("loc");
+          if (mode === "on" || mode === "off") return;
+          if (sessionStorage.getItem("ocnpLoc")) return;
+          window.location.replace("index.html" + window.location.search);
+        } catch (e) {}
+      })();
+    </script>
+
     <!-- Leaflet CSS -->
     <link
       rel="stylesheet"
@@ -3622,6 +3636,8 @@
         if (error.code === error.PERMISSION_DENIED) {
           gps.denied = true;
           stopLocation({ remember: false });
+          locMode = "off";
+          storeSet(LOC_MODE_KEY, "off");
           showToast(
             "Location is blocked for this site. Allow it in your browser settings, or scan a QR code instead.",
           );
@@ -3773,6 +3789,11 @@
            Location off: the QR building is the starting point and GPS stays off (the crosshair turns it on). */
         if (locMode === "on") startLocation({ recenter: true });
         else if (locMode !== "off") autoStartLocation();
+
+        /* The QR/index params are consumed: drop them from the address bar so a refresh
+           (or a later "Start from here" choice) is not overridden by the old ?from=.
+           The mode and starting point are already saved for this tab. */
+        if (window.location.search && storeGet(LOC_MODE_KEY)) stripOriginFromUrl();
       }
 
       /* Toggle Labels */

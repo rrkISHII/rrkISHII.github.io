@@ -78,7 +78,11 @@
         /* A QR code opens this page as index.html?from=<building>.
            Whatever the visitor chooses, that query is passed on to main_page.html untouched,
            plus loc=on / loc=off so the map knows which mode to start in. */
+        let decided = false; // only one choice per visit (stops a late GPS reply overriding NO THANKS)
+
         function goToMap(mode) {
+            if (decided) return;
+            decided = true;
             const params = new URLSearchParams(window.location.search);
             params.set('loc', mode);
             try { sessionStorage.setItem('ocnpLoc', mode); } catch (e) {}
@@ -90,15 +94,25 @@
             locNote.hidden = false;
         }
 
-        function resetTurnOn() {
-            turnOnBtn.disabled = false;
-            turnOnBtn.textContent = 'TURN ON';
+        function setTurnOn(label, disabled) {
+            turnOnBtn.textContent = label;
+            turnOnBtn.disabled = disabled;
         }
 
-        // Show popup when ENTER is clicked
-        enterBtn.addEventListener('click', () => {
+        function openPopup() {
             locNote.hidden = true;
+            setTurnOn('TURN ON', false);
             locationModal.classList.add('active');
+        }
+
+        enterBtn.addEventListener('click', openPopup);
+
+        // Back button (page restored from cache): unlock the popup again
+        window.addEventListener('pageshow', (e) => {
+            if (e.persisted) {
+                decided = false;
+                setTurnOn('TURN ON', false);
+            }
         });
 
         // Close popup on X click
@@ -106,21 +120,26 @@
             locationModal.classList.remove('active');
         });
 
-        // Location OFF: go straight to the map. The ?from=<building> in the QR link is the starting point.
+        // Location OFF: go to the map. The ?from=<building> in the QR link is the starting point.
         noThanksBtn.addEventListener('click', () => goToMap('off'));
+
+        // Location blocked or unsupported: say so, then carry on with the QR starting point
+        function continueWithoutLocation(message) {
+            setTurnOn('CONTINUING…', true);
+            showNote(message);
+            setTimeout(() => goToMap('off'), 2500);
+        }
 
         // Location ON: ask the browser for permission / GPS, then open the map in live-location mode
         turnOnBtn.addEventListener('click', () => {
             locNote.hidden = true;
 
             if (!('geolocation' in navigator)) {
-                alert('Geolocation is not supported by your browser.');
-                goToMap('off');
+                continueWithoutLocation('This browser does not support location. Continuing with the QR code location.');
                 return;
             }
 
-            turnOnBtn.disabled = true;
-            turnOnBtn.textContent = 'LOCATING…';
+            setTurnOn('LOCATING…', true);
 
             navigator.geolocation.getCurrentPosition(
                 () => {
@@ -131,19 +150,17 @@
                     console.warn('Geolocation error:', error);
 
                     if (error.code === error.PERMISSION_DENIED) {
-                        // Blocked: continue with the QR starting point only
-                        alert('Location access was denied in your browser settings. Continuing with the QR code location.');
-                        goToMap('off');
+                        continueWithoutLocation('Location is blocked for this site in your browser settings. Continuing with the QR code location.');
                         return;
                     }
 
                     // GPS switched off or no signal yet: stay here so they can fix it and try again
-                    resetTurnOn();
+                    setTurnOn('TURN ON', false);
                     showNote("We couldn't get a location signal. Turn on Location / GPS in your phone's drop-down menu, then tap TURN ON again, or tap NO THANKS to continue with the QR code.");
                 },
                 {
                     enableHighAccuracy: true,
-                    timeout: 10000,
+                    timeout: 15000,
                     maximumAge: 0
                 }
             );

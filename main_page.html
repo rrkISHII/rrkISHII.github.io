@@ -1,1473 +1,3754 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Mobile Map App</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>Olivarez Navigation Portal</title>
 
     <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+
     <!-- Leaflet Rotate Plugin CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tomickigrzegorz/leaflet-rotate@0.3.0/dist/leaflet-rotate.css">
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@tomickigrzegorz/leaflet-rotate@0.3.0/dist/leaflet-rotate.css"
+    />
 
     <!-- FontAwesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="css/design.css">
-
-    <!-- EmailJS SDK -->
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-    <script type="text/javascript">
-        (function() {
-            emailjs.init("0tSUEPFUAl8ioeFNs");
-        })();
-    </script>
-</head>
-<body>
-
-    <!-- Header Floating Search Bar with Hamburger on Left -->
-    <header class="app-header">
-        <button class="menu-btn" id="menuToggle" aria-label="Open menu">
-            <i class="fa-solid fa-bars"></i>
+    <link rel="stylesheet" href="css/design.css" />
+  </head>
+  <body>
+    <!-- Floating search bar with hamburger on the left -->
+    <header class="app-header" id="appHeader" data-mode="search">
+      <div class="header-search" id="headerSearch">
+        <button
+          type="button"
+          class="menu-btn"
+          id="menuToggle"
+          aria-label="Open menu"
+          aria-expanded="false"
+          aria-controls="sideDrawer"
+        >
+          <i class="fa-solid fa-bars" aria-hidden="true"></i>
         </button>
         <div class="search-container">
-            <input type="text" class="search-input" id="searchInput" placeholder="Search location..." aria-label="Search map" autocomplete="off">
-            <button class="search-btn" id="searchBtn" aria-label="Search">
-                <i class="fa-solid fa-magnifying-glass" id="searchIcon"></i>
-            </button>
+          <input
+            type="search"
+            class="search-input"
+            id="searchInput"
+            placeholder="Search location..."
+            aria-label="Search map"
+            autocomplete="off"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded="false"
+            aria-controls="buildingsList"
+          />
+          <button
+            type="button"
+            class="search-btn"
+            id="searchBtn"
+            aria-label="Search"
+          >
+            <i
+              class="fa-solid fa-magnifying-glass"
+              id="searchIcon"
+              aria-hidden="true"
+            ></i>
+          </button>
         </div>
-        <!-- Google Maps Style Inline Search Dropdown -->
-        <div class="search-dropdown" id="searchDropdown">
-            <ul class="buildings-list" id="buildingsList">
-                <!-- Populated dynamically alphabetically -->
-            </ul>
+      </div>
+      <section
+        class="trip-card"
+        id="tripCard"
+        data-origin="pin"
+        aria-label="Walking route"
+      >
+        <button
+          type="button"
+          class="trip-back"
+          id="tripBackBtn"
+          aria-label="Clear route"
+        >
+          <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+        </button>
+        <div class="trip-points">
+          <button type="button" class="trip-row" id="tripFromBtn">
+            <span class="trip-marker"><span class="trip-dot"></span></span
+            ><span class="sr-only">From: </span
+            ><span class="trip-text" id="tripFromText">Your location</span>
+          </button>
+          <button type="button" class="trip-row trip-row-to" id="tripToBtn">
+            <span class="trip-marker"
+              ><i
+                class="fa-solid fa-flag-checkered"
+                aria-hidden="true"
+              ></i></span
+            ><span class="sr-only">To: </span
+            ><span class="trip-text" id="tripToText">Destination</span>
+          </button>
         </div>
+        <div class="trip-summary">
+          <span class="trip-time" id="tripTime">1 min</span
+          ><span class="trip-dist" id="tripDist">0 m</span>
+        </div>
+      </section>
+      <!-- Inline search dropdown -->
+      <div class="search-dropdown" id="searchDropdown">
+        <ul
+          class="buildings-list"
+          id="buildingsList"
+          role="listbox"
+          aria-label="Campus locations"
+        >
+          <!-- Populated dynamically, alphabetically -->
+        </ul>
+      </div>
     </header>
 
-    <!-- Side Navigation Overlay & Drawer -->
+    <!-- Where you start (QR / location). The route itself lives in the trip card above. -->
+    <div class="status-stack" id="statusStack">
+      <div class="status-chip here-chip" id="hereChip" hidden>
+        <i
+          class="fa-solid fa-location-dot"
+          id="hereChipIcon"
+          aria-hidden="true"
+        ></i>
+        <span id="hereChipText"></span>
+        <button
+          type="button"
+          id="clearOriginBtn"
+          aria-label="Clear starting point"
+        >
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+      </div>
+    </div>
+    <div
+      class="sr-only"
+      id="routeAnnouncer"
+      role="status"
+      aria-live="polite"
+    ></div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <!-- Side navigation overlay and drawer -->
     <div class="nav-overlay" id="navOverlay"></div>
-    <nav class="side-drawer" id="sideDrawer">
-        <div class="drawer-header">
-            <h2>OCNP</h2>
-            <button class="close-btn" id="closeDrawer" aria-label="Close menu"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <ul class="drawer-menu">
-            <li>
-                <a href="#" id="themeToggleBtn">
-                    <i class="fa-solid fa-moon" id="themeIcon"></i>
-                    <span id="themeLabel">Dark Mode</span>
-                </a>
-            </li>
-            <li>
-                <a href="#" id="feedbackLink">
-                    <i class="fa-solid fa-envelope-open"></i>Feedback
-                </a>
-            </li>
-            <li>
-                <a href="#" id="aboutLink">
-                    <i class="fa-solid fa-circle-info"></i>About Us / Contact Us
-                </a>
-            </li>
-            <li>
-                <a href="#" id="attributionsLink">
-                    <i class="fa-solid fa-users"></i>Attributions
-                </a>
-            </li>
-        </ul>
+    <nav class="side-drawer" id="sideDrawer" aria-label="Main menu">
+      <div class="drawer-header">
+        <h2>OCNP</h2>
+        <button
+          type="button"
+          class="close-btn"
+          id="closeDrawer"
+          aria-label="Close menu"
+        >
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+      </div>
+      <ul class="drawer-menu">
+        <li>
+          <button type="button" id="themeToggleBtn">
+            <i class="fa-solid fa-moon" id="themeIcon" aria-hidden="true"></i>
+            <span id="themeLabel">Dark Mode</span>
+          </button>
+        </li>
+        <li>
+          <button type="button" id="feedbackLink">
+            <i class="fa-solid fa-envelope-open" aria-hidden="true"></i>Feedback
+          </button>
+        </li>
+        <li>
+          <button type="button" id="aboutLink">
+            <i class="fa-solid fa-circle-info" aria-hidden="true"></i>About Us /
+            Contact Us
+          </button>
+        </li>
+        <li>
+          <button type="button" id="attributionsLink">
+            <i class="fa-solid fa-users" aria-hidden="true"></i>Attributions
+          </button>
+        </li>
+      </ul>
     </nav>
 
-    <!-- Feedback Modal Window -->
+    <!-- Feedback modal -->
     <div class="modal-overlay" id="feedbackModal">
-        <div class="feedback-window">
-            <div class="modal-header">
-                <h3><i class="fa-solid fa-comments"></i> Send Feedback</h3>
-                <button class="modal-close-btn" id="closeFeedbackBtn" aria-label="Close feedback"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            
-            <form id="feedbackForm">
-                <div class="form-group">
-                    <label for="userEmail"><i class="fa-regular fa-envelope"></i> Email</label>
-                    <input type="email" id="userEmail" class="form-input" placeholder="enter your email here" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="feedbackSubject"><i class="fa-solid fa-tag"></i> Subject</label>
-                    <input type="text" id="feedbackSubject" class="form-input" placeholder="enter subject here" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="feedbackMessage"><i class="fa-solid fa-message"></i> Feedback</label>
-                    <textarea id="feedbackMessage" class="form-textarea" placeholder="enter your feedback here..." rows="4" required></textarea>
-                </div>
-
-                <button type="submit" class="send-btn" id="sendFeedbackBtn">
-                    <i class="fa-solid fa-paper-plane"></i> Send Feedback
-                </button>
-            </form>
+      <div
+        class="feedback-window"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="feedbackTitle"
+      >
+        <div class="modal-header">
+          <h3 id="feedbackTitle">
+            <i class="fa-solid fa-comments" aria-hidden="true"></i> Send
+            Feedback
+          </h3>
+          <button
+            type="button"
+            class="modal-close-btn"
+            id="closeFeedbackBtn"
+            aria-label="Close feedback"
+          >
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+          </button>
         </div>
+
+        <form id="feedbackForm">
+          <div class="form-group">
+            <label for="userEmail"
+              ><i class="fa-regular fa-envelope" aria-hidden="true"></i>
+              Email</label
+            >
+            <input
+              type="email"
+              id="userEmail"
+              class="form-input"
+              placeholder="enter your email here"
+              autocomplete="email"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="feedbackSubject"
+              ><i class="fa-solid fa-tag" aria-hidden="true"></i> Subject</label
+            >
+            <input
+              type="text"
+              id="feedbackSubject"
+              class="form-input"
+              placeholder="enter subject here"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="feedbackMessage"
+              ><i class="fa-solid fa-message" aria-hidden="true"></i>
+              Feedback</label
+            >
+            <textarea
+              id="feedbackMessage"
+              class="form-textarea"
+              placeholder="enter your feedback here..."
+              rows="4"
+              required
+            ></textarea>
+          </div>
+
+          <button type="submit" class="send-btn" id="sendFeedbackBtn">
+            <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Send
+            Feedback
+          </button>
+        </form>
+      </div>
     </div>
 
-    <!-- Feedback Sent Success Alert Popup -->
+    <!-- Feedback sent success popup -->
     <div class="modal-overlay" id="successModal">
-        <div class="success-popup">
-            <div class="success-icon">
-                <i class="fa-solid fa-circle-check"></i>
-            </div>
-            <h3>Feedback Sent!</h3>
-            <p>Thank you for helping us improve OCNP. Your message has been sent to support.</p>
-            <button class="popup-close-btn" id="closeSuccessBtn">Close & Return to Map</button>
+      <div
+        class="success-popup"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="successTitle"
+        aria-describedby="successText"
+      >
+        <div class="success-icon">
+          <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
         </div>
+        <h3 id="successTitle">Feedback Sent!</h3>
+        <p id="successText">
+          Thank you for helping us improve OCNP. Your message has been sent to
+          support.
+        </p>
+        <button type="button" class="popup-close-btn" id="closeSuccessBtn">
+          Close &amp; Return to Map
+        </button>
+      </div>
     </div>
 
-    <!-- Generic Info Modal for About & Attributions -->
+    <!-- Generic info modal for About and Attributions -->
     <div class="modal-overlay" id="infoModal">
-        <div class="feedback-window">
-            <div class="modal-header">
-                <h3 id="infoModalTitle">Info</h3>
-                <button class="modal-close-btn" id="closeInfoBtn" aria-label="Close info"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div id="infoModalBody" class="info-modal-body">
-                <!-- Dynamic Content -->
-            </div>
+      <div
+        class="feedback-window"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="infoModalTitle"
+      >
+        <div class="modal-header">
+          <h3 id="infoModalTitle">Info</h3>
+          <button
+            type="button"
+            class="modal-close-btn"
+            id="closeInfoBtn"
+            aria-label="Close info"
+          >
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+          </button>
         </div>
+        <div id="infoModalBody" class="info-modal-body">
+          <!-- Dynamic content -->
+        </div>
+      </div>
     </div>
 
-    <!-- Map Container -->
-    <div id="oc_map"></div>
+    <!-- Map container -->
+    <div id="oc_map" role="region" aria-label="Campus map"></div>
 
-    <!-- Bottom Right Controls Container -->
+    <!-- Bottom-right controls -->
     <div class="map-controls-container">
-        <!-- Building Labels Toggle Button -->
-        <button class="map-control-btn" id="toggleLabelsBtn" aria-label="Toggle building labels" title="Toggle building labels">
-            <i class="fa-solid fa-font"></i>
-        </button>
+      <button
+        type="button"
+        class="map-control-btn"
+        id="toggleLabelsBtn"
+        aria-label="Toggle building labels"
+        aria-pressed="false"
+        title="Toggle building labels"
+      >
+        <i class="fa-solid fa-font" aria-hidden="true"></i>
+      </button>
 
-        <!-- Geolocation Floating Button -->
-        <button class="map-control-btn my-location-btn" id="myLocationBtn" aria-label="Go to my location" title="Go to my location">
-            <i class="fa-solid fa-crosshairs"></i>
-        </button>
+      <button
+        type="button"
+        class="map-control-btn my-location-btn"
+        id="myLocationBtn"
+        aria-label="Go to my location"
+        title="Go to my location"
+      >
+        <i class="fa-solid fa-crosshairs" aria-hidden="true"></i>
+      </button>
     </div>
 
-    <!-- Google Maps Style Swipeable Bottom Sheet -->
+    <!-- Swipeable bottom sheet -->
     <div class="bottom-sheet-overlay" id="bottomSheetOverlay"></div>
-    <div class="bottom-sheet" id="bottomSheet">
-        <!-- Drag Handle Area -->
-        <div class="sheet-drag-area" id="sheetDragArea">
-            <div class="sheet-handle"></div>
-            <div class="sheet-header">
-                <h3 id="sheetTitle">Building Title</h3>
+    <div
+      class="bottom-sheet"
+      id="bottomSheet"
+      role="dialog"
+      aria-labelledby="sheetTitle"
+      inert
+    >
+      <!-- Drag handle area -->
+      <div class="sheet-drag-area" id="sheetDragArea">
+        <button
+          type="button"
+          class="sheet-handle-btn"
+          id="sheetToggleBtn"
+          aria-label="Expand details"
+          aria-expanded="false"
+          aria-controls="sheetContent"
+        >
+          <span class="sheet-handle"></span>
+        </button>
+        <div class="sheet-header">
+          <!-- Top Row: Full building name and close button -->
+          <div class="sheet-header-top">
+            <div class="sheet-header-left">
+              <h3 id="sheetTitle" tabindex="-1">Building Title</h3>
             </div>
-            <!-- Prominent Action Button -->
-            <button class="destination-btn" id="goToDestinationBtn">
-                <i class="fa-solid fa-location-arrow"></i> Go to Destination
+            <button
+              type="button"
+              class="sheet-close-btn"
+              id="closeSheetBtn"
+              aria-label="Close details"
+            >
+              <i class="fa-solid fa-xmark" aria-hidden="true"></i>
             </button>
-        </div>
+          </div>
 
-        <!-- Scrollable Content -->
-        <div class="sheet-content" id="sheetContent">
-            <!-- 3 Images Gallery Row -->
-            <div class="sheet-images-gallery" id="sheetImagesGallery">
-                <div class="sheet-image-box">
-                    <div class="sheet-placeholder-text">
-                        <i class="fa-solid fa-image"></i>
-                        <span>Photo 1</span>
-                    </div>
-                    <img id="sheetImage1" src="" alt="Building Photo 1">
-                </div>
-                <div class="sheet-image-box">
-                    <div class="sheet-placeholder-text">
-                        <i class="fa-solid fa-image"></i>
-                        <span>Photo 2</span>
-                    </div>
-                    <img id="sheetImage2" src="" alt="Building Photo 2">
-                </div>
-                <div class="sheet-image-box">
-                    <div class="sheet-placeholder-text">
-                        <i class="fa-solid fa-image"></i>
-                        <span>Photo 3</span>
-                    </div>
-                    <img id="sheetImage3" src="" alt="Building Photo 3">
-                </div>
+          <!-- Bottom Row: Estimated Time & Distance Badges -->
+          <div class="sheet-header-right">
+            <span class="sheet-stat-badge" id="sheetTimeBadge" hidden>
+              <i class="fa-regular fa-clock" aria-hidden="true"></i>
+              <span id="sheetTimeText">0 min</span>
+            </span>
+            <span class="sheet-stat-badge" id="sheetDistanceBadge" hidden>
+              <i class="fa-solid fa-person-walking" aria-hidden="true"></i>
+              <span id="sheetDistanceText">0 m</span>
+            </span>
+            <button
+              type="button"
+              class="sheet-pill-btn"
+              id="startHereBtn"
+              hidden
+            >
+              <i class="fa-solid fa-location-dot" aria-hidden="true"></i> Start
+              from here
+            </button>
+          </div>
+        </div>
+        <!-- Action button -->
+        <button type="button" class="destination-btn" id="goToDestinationBtn">
+          <i class="fa-solid fa-location-arrow" aria-hidden="true"></i> Go to
+          Destination
+        </button>
+      </div>
+
+      <!-- Scrollable content -->
+      <div class="sheet-content" id="sheetContent">
+        <div class="sheet-images-gallery" id="sheetImagesGallery">
+          <div class="sheet-image-box">
+            <div class="sheet-placeholder-text">
+              <i class="fa-solid fa-image" aria-hidden="true"></i>
+              <span>Photo 1</span>
             </div>
-
-            <p class="sheet-description" id="sheetDescription">
-                Building description text goes here...
-            </p>
-            
-            <!-- Entrances Container -->
-            <div id="entrancesContainer" style="margin-top: 15px;"></div>
+            <img id="sheetImage1" alt="" />
+          </div>
+          <div class="sheet-image-box">
+            <div class="sheet-placeholder-text">
+              <i class="fa-solid fa-image" aria-hidden="true"></i>
+              <span>Photo 2</span>
+            </div>
+            <img id="sheetImage2" alt="" />
+          </div>
+          <div class="sheet-image-box">
+            <div class="sheet-placeholder-text">
+              <i class="fa-solid fa-image" aria-hidden="true"></i>
+              <span>Photo 3</span>
+            </div>
+            <img id="sheetImage3" alt="" />
+          </div>
         </div>
+
+        <p class="sheet-description" id="sheetDescription">
+          Building description text goes here...
+        </p>
+      </div>
     </div>
 
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    
-    <!-- Leaflet Rotate Plugin JS -->
+    <!-- Libraries -->
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
     <script src="https://cdn.jsdelivr.net/npm/@tomickigrzegorz/leaflet-rotate@0.3.0/dist/leaflet-rotate.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3.12.1/dist/email.min.js"></script>
 
-    <!-- JavaScript Logic -->
+    <!-- App -->
     <script>
-        // Initialize Map with Rotation Support & Compass hidden at 0° bearing
-        var oc_map = L.map('oc_map', {
-            zoomControl: false,
-            rotate: true,                 
-            touchRotate: true,         
-            shiftKeyRotate: true,      
-            dragRotate: true,          
-            bounceAtZoom: false,
-            touchZoom: 'center',
-            rotateControl: {
-                position: 'topright',
-                closeOnZeroBearing: true
-            }
-        }).setView([14.4788, 120.9964], 18);
+      "use strict";
 
-        if (oc_map.touchRotate) {
-            oc_map.touchRotate.enable();
-        }
-
-        document.getElementById('oc_map').addEventListener('contextmenu', function (e) {
-            e.preventDefault();
-        });
-
-        // Close bottom sheet and search dropdown when tapping empty map space
-        oc_map.on('click', function(e) {
-            if (currentSnapState !== 'closed') {
-                closeBottomSheet();
-            }
-            document.getElementById('searchDropdown').classList.remove('active');
-        });
-
-        // Fixed Basemaps
-        var light_map = L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png', {
-            minZoom: 0,
-            maxZoom: 20,
-            attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        });
-
-        var dark_map = L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png', {
-            minZoom: 0,
-            maxZoom: 20,
-            attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>, &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors'
-        });
-
-        light_map.addTo(oc_map);
-        var currentTileLayer = light_map;
-        var searchMarker = null;
-        let userMarker = null;
-        let accuracyCircle = null;
-        let routeLayer = null;
-
-        // Dynamic Building Records Registry & Label State
-        let campusBuildings = [];
-        let buildingMarkers = [];
-        let labelsVisible = false;
-
-        // --- Dynamic Swipeable Bottom Sheet Logic ---
-        const bottomSheet = document.getElementById('bottomSheet');
-        const bottomSheetOverlay = document.getElementById('bottomSheetOverlay');
-        const sheetDragArea = document.getElementById('sheetDragArea');
-        const sheetContent = document.getElementById('sheetContent');
-        const goToDestinationBtn = document.getElementById('goToDestinationBtn');
-        const sheetTitle = document.getElementById('sheetTitle');
-        const sheetDescription = document.getElementById('sheetDescription');
-        const entrancesContainer = document.getElementById('entrancesContainer');
-
-        const sheetImgElements = [
-            document.getElementById('sheetImage1'),
-            document.getElementById('sheetImage2'),
-            document.getElementById('sheetImage3')
-        ];
-
-        let activeBuildingData = null;
-        let currentSnapState = 'closed';
-        let startY = 0;
-        let currentY = 0;
-        let initialTransformY = 0;
-        let isDragging = false;
-
-        const PEEK_HEIGHT = 135;
-
-        function getPeekOffsetY() {
-            return window.innerHeight - PEEK_HEIGHT;
-        }
-
-        function snapToState(state) {
-            currentSnapState = state;
-            bottomSheet.classList.remove('dragging');
-            bottomSheet.style.transition = 'transform 0.4s cubic-bezier(0.25, 1, 0.3, 1)';
-
-            if (state === 'expanded') {
-                bottomSheet.style.transform = 'translateY(0px)';
-                bottomSheetOverlay.classList.add('active');
-            } else if (state === 'peek') {
-                const peekOffset = getPeekOffsetY();
-                bottomSheet.style.transform = `translateY(${peekOffset}px)`;
-                bottomSheetOverlay.classList.remove('active');
-            } else {
-                bottomSheet.style.transform = 'translateY(100%)';
-                bottomSheetOverlay.classList.remove('active');
-            }
-        }
-
-        function openBottomSheet(data) {
-            sheetTitle.textContent = data.title || "Location Details";
-            sheetDescription.textContent = data.description || "No description available.";
-            activeBuildingData = data;
-
-            entrancesContainer.innerHTML = '';
-            if (data.entrances && data.entrances.length > 0) {
-                let html = '<h4>Building Entrances:</h4><ul style="list-style:none; padding:0; margin-top:5px;">';
-                data.entrances.forEach((ent, idx) => {
-                    html += `<li style="margin-bottom: 8px;">
-                        <button onclick="routeToEntrance(${ent.coords[1]}, ${ent.coords[0]}, '${ent.name}')" style="width:100%; padding:8px; background:#0B793D; color:white; border:none; border-radius:6px; cursor:pointer;">
-                            <i class="fa-solid fa-person-walking"></i> Route to ${ent.name}
-                        </button>
-                    </li>`;
-                });
-                html += '</ul>';
-                entrancesContainer.innerHTML = html;
-            }
-
-            const imageUrls = Array.isArray(data.imageUrls) ? data.imageUrls : (data.imageUrl ? [data.imageUrl] : []);
-
-            sheetImgElements.forEach((imgEl, idx) => {
-                const box = imgEl.parentElement;
-                const placeholder = box.querySelector('.sheet-placeholder-text');
-
-                if (imageUrls[idx]) {
-                    imgEl.src = imageUrls[idx];
-                    imgEl.style.display = 'block';
-                    if (placeholder) placeholder.style.display = 'none';
-                } else {
-                    imgEl.src = '';
-                    imgEl.style.display = 'none';
-                    if (placeholder) placeholder.style.display = 'flex';
-                }
-            });
-
-            snapToState('peek');
-        }
-
-        function closeBottomSheet() {
-            snapToState('closed');
-        }
-
-        function onTouchStart(e) {
-            if (e.target.closest('#sheetDragArea') || sheetContent.scrollTop === 0) {
-                isDragging = true;
-                startY = e.touches[0].clientY;
-                
-                if (currentSnapState === 'expanded') {
-                    initialTransformY = 0;
-                } else if (currentSnapState === 'peek') {
-                    initialTransformY = getPeekOffsetY();
-                } else {
-                    initialTransformY = window.innerHeight;
-                }
-
-                bottomSheet.classList.add('dragging');
-                bottomSheet.style.transition = 'none';
-            }
-        }
-
-        function onTouchMove(e) {
-            if (!isDragging) return;
-            currentY = e.touches[0].clientY;
-            const deltaY = currentY - startY;
-            let newTransformY = initialTransformY + deltaY;
-
-            if (newTransformY < 0) newTransformY = 0;
-
-            bottomSheet.style.transform = `translateY(${newTransformY}px)`;
-        }
-
-        function onTouchEnd(e) {
-            if (!isDragging) return;
-            isDragging = false;
-
-            const deltaY = currentY - startY;
-
-            if (currentSnapState === 'peek') {
-                if (deltaY < -60) {
-                    snapToState('expanded');
-                } else if (deltaY > 60) {
-                    snapToState('closed');
-                } else {
-                    snapToState('peek');
-                }
-            } else if (currentSnapState === 'expanded') {
-                if (deltaY > 120) {
-                    snapToState('closed');
-                } else if (deltaY > 50) {
-                    snapToState('peek');
-                } else {
-                    snapToState('expanded');
-                }
-            } else {
-                if (deltaY < -100) {
-                    snapToState('peek');
-                } else {
-                    snapToState('closed');
-                }
-            }
-        }
-
-        bottomSheet.addEventListener('touchstart', onTouchStart, { passive: true });
-        bottomSheet.addEventListener('touchmove', onTouchMove, { passive: true });
-        bottomSheet.addEventListener('touchend', onTouchEnd);
-
-        bottomSheetOverlay.addEventListener('click', closeBottomSheet);
-
-        goToDestinationBtn.addEventListener('click', () => {
-            if (!activeBuildingData) return;
-            if (activeBuildingData.entrances && activeBuildingData.entrances.length > 0) {
-                if (activeBuildingData.entrances.length === 1) {
-                    const ent = activeBuildingData.entrances[0];
-                    routeToEntrance(ent.coords[1], ent.coords[0], ent.name);
-                } else {
-                    snapToState('expanded');
-                }
-            } else if (activeBuildingData.coords) {
-                routeToEntrance(activeBuildingData.coords.lat, activeBuildingData.coords.lng, "Building Center");
-            } else {
-                alert("No destination coordinates found.");
-            }
-        });
-
-        // --- Stadia Maps Routing Integration ---
-        function routeToEntrance(destLat, destLng, entranceName) {
-            if (!userMarker) {
-                alert("Please tap the 'My Location' (crosshairs) button first so we know where you are starting from!");
-                return;
-            }
-
-            const userLatLng = userMarker.getLatLng();
-            closeBottomSheet();
-
-            const valhallaPayload = {
-                locations: [
-                    { lat: userLatLng.lat, lon: userLatLng.lng },
-                    { lat: destLat, lon: destLng }
+      const geojsonData = {
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            properties: { perimeter: "oc_perimeter" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.996124, 14.478541],
+                [120.99584, 14.477921],
+                [120.995645, 14.478038],
+                [120.995598, 14.477931],
+                [120.995808, 14.477851],
+                [120.995748, 14.477682],
+                [120.994915, 14.478017],
+                [120.995758, 14.479822],
+                [120.995994, 14.480113],
+                [120.996671, 14.479866],
+                [120.99776, 14.47923],
+                [120.997333, 14.478282],
+                [120.996812, 14.478525],
+                [120.996676, 14.478282],
+                [120.996124, 14.478541],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              "EYE CENTER": "OGH_EYE_CENTER",
+              description:
+                "The Medical Arts Building is a facility associated with healthcare-related education and services. It provides spaces that support medical learning, training, and professional activities. The building contributes to the development of students pursuing healthcare-related fields.",
+              imageUrls: ["images/Eye_Center1.jpg", "images/Eye_Center2.jpg"],
+              entrances: [
+                { name: "entrance1", coords: [120.997083, 14.478776] },
+              ],
+            },
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [120.997023, 14.478803],
+                  [120.996963, 14.478683],
+                  [120.996901, 14.478564],
+                  [120.997067, 14.478487],
+                  [120.997188, 14.478728],
+                  [120.997023, 14.478803],
                 ],
-                costing: "pedestrian",
-                directions_options: { units: "metric" }
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              TENNIS_COURT: "OC_TENNIS",
+              description:
+                "The Tennis Court is a place for tennis practice, training, and recreational games. Beside it is a Cafeteria connected to the SDL Building, where students, tennis players, and visitors watching tennis matches can buy food and drinks. Both facilities provide a space for sports, dining, and relaxation.",
+              imageUrls: [
+                "images/TENNIS1.jpg",
+                "images/TENNIS2.jpg",
+                "images/TENNIS3.jpg",
+              ],
+              entrances: [
+                { name: "entrance1", coords: [120.996943, 14.479616] },
+                { name: "entrance2", coords: [120.9972441, 14.4793578] },
+              ],
+            },
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [120.996933, 14.479621],
+                  [120.996789, 14.479335],
+                  [120.996925, 14.479268],
+                  [120.997088, 14.479194],
+                  [120.99723, 14.479479],
+                  [120.996933, 14.479621],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              SDL: "OC_SDL",
+              description:
+                "The SDL is an academic building that provides classrooms and learning spaces for Nursing students. It also houses a library where students can study and access educational resources. A bookstore is located within the building, where students can purchase school supplies and other learning materials.",
+              imageUrls: ["images/SDL1.jpg", "images/SDL2.jpg"],
+              entrances: [
+                { name: "entrance1", coords: [120.996746, 14.479541] },
+                { name: "entrance2", coords: [120.9968036, 14.4796553] },
+              ],
+            },
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [120.996814, 14.479676],
+                  [120.996673, 14.479396],
+                  [120.996789, 14.479336],
+                  [120.996933, 14.479621],
+                  [120.996814, 14.479676],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              BOOKSTORE: "OC_BOOKSTORE",
+              description:
+                "The Bookstore is a campus facility where students can purchase school supplies, textbooks, and other educational materials. It also offers school uniforms for students from different courses and departments. This facility provides students with easy access to the essential items they need for their academic activities.",
+              imageUrls: ["images/BOOKSTORE.jpg"],
+              entrances: [
+                { name: "entrance1", coords: [120.996569, 14.479701] },
+              ],
+            },
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [120.996551, 14.479665],
+                  [120.996719, 14.479578],
+                  [120.996778, 14.479693],
+                  [120.996607, 14.479775],
+                  [120.996551, 14.479665],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              CLINIC: "OC_CLINIC",
+              description:
+                "The Clinic is a healthcare facility that provides basic medical assistance to students, faculty, and staff. It serves as a place for first aid, health consultations, and minor medical concerns. The clinic helps promote health and safety within the campus.",
+              imageUrls: ["images/CLINIC_.jpg"],
+              entrances: [
+                { name: "entrance1", coords: [120.996495, 14.479549] },
+              ],
+            },
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [120.996528, 14.479618],
+                  [120.996471, 14.479502],
+                  [120.996637, 14.479415],
+                  [120.996695, 14.479534],
+                  [120.996617, 14.479573],
+                  [120.996528, 14.479618],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              "OLI'S DEN": "OC_CAFETERIA",
+              description:
+                "Oli's Den is a cafeteria where students can purchase food, snacks, and beverages. It serves as a dining area for students from different departments and grade levels. Students can enjoy their meals and spend time with friends during breaks.",
+              imageUrls: [
+                "images/OLI_S DEN1.jpg",
+                "images/OLI_S DEN2.jpg",
+                "images/OLI_S DEN3.jpg",
+              ],
+              entrances: [
+                { name: "entrance1", coords: [120.996454, 14.479466] },
+                { name: "entrance2", coords: [120.996569, 14.479279] },
+              ],
+            },
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [120.996471, 14.479502],
+                  [120.996431, 14.479424],
+                  [120.996634, 14.47921],
+                  [120.996621, 14.479185],
+                  [120.996765, 14.479117],
+                  [120.996808, 14.479206],
+                  [120.996854, 14.479301],
+                  [120.996471, 14.479502],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              CAFÉ: "OC_CAFÉ",
+              description:
+                "The Cafe is located beside Oli's Den, providing a convenient place for students, faculty, and staff to purchase drinks and light snacks. It offers a comfortable environment where students can relax during breaks between classes. Students can also spend their free time here while socializing with friends.",
+              imageUrls: [
+                "images/CAFE1.jpg",
+                "images/CAFE2.jpg",
+                "images/CAFE3.jpg",
+              ],
+              entrances: [
+                { name: "entrance1", coords: [120.996832, 14.479156] },
+              ],
+            },
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [120.996855, 14.479301],
+                  [120.996793, 14.479174],
+                  [120.996861, 14.479142],
+                  [120.996924, 14.479268],
+                  [120.996855, 14.479301],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              "OLIVAREZ GENERAL HOSPITAL": "OGH_MAIN",
+              description:
+                "Olivarez General Hospital is a healthcare institution that provides medical services to patients and the community. It offers facilities for medical consultations, treatment, and other healthcare needs. The hospital also supports healthcare-related learning and clinical experiences.",
+              imageUrls: [
+                "images/OGH1.jpg",
+                "images/OGH2.jpg",
+                "images/OGH3.jpg",
+              ],
+              entrances: [
+                { name: "entrance1", coords: [120.99725, 14.479045] },
+              ],
+            },
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [120.996924, 14.479269],
+                  [120.996861, 14.479142],
+                  [120.99709, 14.479034],
+                  [120.997029, 14.47891],
+                  [120.997153, 14.478851],
+                  [120.997357, 14.479256],
+                  [120.997233, 14.479317],
+                  [120.997154, 14.479163],
+                  [120.996924, 14.479269],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              CRIMINOLOGY: "OC_CRIMINOLOGY",
+              description:
+                "The Criminology Building is an academic facility for students taking the Criminology program. It provides learning spaces for discussions, training, and activities related to criminal justice and law enforcement. Located beside the Criminology Building is the Marketing Office, which assists first-time enrollees by providing information about academic programs, admission requirements, and enrollment procedures.",
+              imageUrls: [
+                "images/CRIM1.jpg",
+                "images/CRIM 2.jpg",
+                "images/CRIM3.jpg",
+              ],
+              entrances: [
+                { name: "entrance1", coords: [120.997546, 14.479151] },
+              ],
+            },
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [120.997589, 14.479244],
+                  [120.997507, 14.479067],
+                  [120.997607, 14.479023],
+                  [120.997687, 14.479199],
+                  [120.997589, 14.479244],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              PARKING: "OC_PARKING",
+              description:
+                "The Parking Area is a designated space for vehicles belonging to students, faculty, staff, and visitors. It provides an organized location for parking cars and motorcycles. This facility helps maintain proper vehicle arrangements within the campus.",
+              imageUrls: [
+                "images/PARKING1.jpg",
+                "images/PARKING2.jpg",
+                "images/PARKING3.jpg",
+              ],
+              entrances: [
+                { name: "car_entrance", coords: [120.9959815, 14.4799264] },
+                { name: "entrance1", coords: [120.996212, 14.479622] },
+                { name: "entrance2", coords: [120.996388, 14.479911] },
+              ],
+            },
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [120.996016, 14.480026],
+                  [120.995922, 14.479905],
+                  [120.995846, 14.479772],
+                  [120.996229, 14.479615],
+                  [120.996389, 14.479912],
+                  [120.996016, 14.480026],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              name: "BOTANICAL",
+              description:
+                "The Botanical Area is an open space where students can practice dancing and other group performances. It is also used for basketball practice and recreational activities. This area provides students with a place to improve their skills, practice with friends, and prepare for school events.",
+              imageUrls: ["images/BOTANICAL_.jpg"],
+            },
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [120.995838, 14.479765],
+                  [120.995735, 14.479611],
+                  [120.99567, 14.479452],
+                  [120.996057, 14.479279],
+                  [120.996225, 14.479605],
+                  [120.995838, 14.479765],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              ADL: "OC_ADL",
+              description:
+                "The ADL is a campus building located near the Botanical Area and the pathway leading to other school buildings. It houses the Office of Student Affairs (OSA) and classrooms for Nursing students. The building provides spaces for student concerns, academic activities, and nursing education.",
+              imageUrls: [
+                "images/ADL1.jpg",
+                "images/ADL2.jpg",
+                "images/ADL3.jpg",
+              ],
+              entrances: [
+                { name: "entrance1", coords: [120.995984, 14.479055] },
+                { name: "entrance2", coords: [120.996408, 14.479487] },
+                { name: "entrance3", coords: [120.996261, 14.479597] },
+                { name: "entrance4", coords: [120.996059, 14.479023] },
+              ],
+            },
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [120.996408, 14.479887],
+                  [120.995975, 14.479038],
+                  [120.99605, 14.479002],
+                  [120.996166, 14.479227],
+                  [120.996279, 14.479453],
+                  [120.99637, 14.479412],
+                  [120.996424, 14.479519],
+                  [120.996478, 14.479622],
+                  [120.996382, 14.479667],
+                  [120.996478, 14.479853],
+                  [120.996408, 14.479887],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              IBED: "OC_IBED",
+              description:
+                "The IBED is a learning area for kindergarten and elementary students. It provides classrooms and facilities that support basic education and early learning. This department helps students develop essential knowledge, skills, and good learning habits.",
+              imageUrls: ["images/IBED1.jpg", "images/IBED2.jpg"],
+              entrances: [
+                { name: "entrance1", coords: [120.99594, 14.479076] },
+              ],
+            },
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [120.995613, 14.479324],
+                  [120.995519, 14.479128],
+                  [120.995888, 14.478964],
+                  [120.99598, 14.479161],
+                  [120.995613, 14.479324],
+                ],
+                [
+                  [120.995683, 14.479207],
+                  [120.995866, 14.479127],
+                  [120.995839, 14.479071],
+                  [120.995656, 14.479151],
+                  [120.995683, 14.479207],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              ELO: "OC_ELO",
+              description:
+                "The ELO Building is a multi-story academic and administrative facility at Olivarez College. It contains classrooms, computer laboratories, faculty offices, the Registrar's Office, a library, and other student services. The building supports daily academic activities and provides essential facilities for students and faculty members.",
+              imageUrls: ["images/ELO1.jpg", "images/ELO2.jpg"],
+              entrances: [
+                { name: "entrance1", coords: [120.996643, 14.478807] },
+                { name: "entrance2", coords: [120.996252, 14.478928] },
+              ],
+            },
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [120.996275, 14.478974],
+                  [120.996235, 14.478894],
+                  [120.9969, 14.478591],
+                  [120.996941, 14.478672],
+                  [120.996275, 14.478974],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              GYMNASIUM: "OC_GYMNASIUM",
+              description:
+                "The Gymnasium is an indoor facility used for physical education, sports activities, and school events. It provides a spacious area for students to participate in exercises, competitions, and group activities. The facility promotes physical fitness, teamwork, and active student participation.",
+              imageUrls: ["images/GYMNASIUM1.jpg", "images/GYMNASIUM2.jpg"],
+              entrances: [
+                { name: "entrance1", coords: [120.996649, 14.47861] },
+                { name: "entrance2", coords: [120.99631, 14.478764] },
+              ],
+            },
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [120.996228, 14.478802],
+                  [120.996124, 14.478594],
+                  [120.996641, 14.478356],
+                  [120.996746, 14.478566],
+                  [120.996228, 14.478802],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              HM_LAB: "OC_HM_LAB",
+              description:
+                "The Kitchen Area is located beside the CASA and is used by Hospitality Management (HM) students for culinary training. It provides a space where students can practice cooking, food preparation, and proper kitchen procedures. This facility helps students improve their culinary skills and gain practical experience in food service and kitchen operations.",
+              imageUrls: ["images/CASA1.jpg", "images/CASA2.jpg"],
+              entrances: [
+                { name: "entrance1", coords: [120.995899, 14.478854] },
+                { name: "entrance2", coords: [120.99585, 14.478815] },
+              ],
+            },
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [120.995764, 14.478635],
+                  [120.995903, 14.478569],
+                  [120.995955, 14.478678],
+                  [120.996013, 14.478801],
+                  [120.995874, 14.478866],
+                  [120.99582, 14.478753],
+                  [120.995764, 14.478635],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              CASA: "OC_CASA",
+              description:
+                "The CASA is a learning facility designed for Hospitality Management (HM) and Tourism students. It provides spaces for practical training, demonstrations, and activities related to hospitality and tourism. This facility helps students develop professional skills and gain hands-on experience for their future careers.",
+              imageUrls: ["images/CASA1.jpg", "images/CASA2.jpg"],
+              entrances: [
+                { name: "entrance1", coords: [120.996111, 14.478753] },
+              ],
+            },
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [120.995903, 14.478569],
+                  [120.99604, 14.478503],
+                  [120.996153, 14.478734],
+                  [120.996013, 14.478801],
+                  [120.995903, 14.478569],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              RESORT: "OC_RESORT",
+              description:
+                "The Resort is a peaceful area where students can relax and enjoy their free time. It is also a place where students can work on school projects and complete group activities. The area provides a comfortable environment for both relaxation and academic tasks.",
+              imageUrls: [
+                "images/RESORT1.jpg",
+                "images/RESORT2.jpg",
+                "images/RESORT3.jpg",
+              ],
+              entrances: [
+                { name: "entrance1", coords: [120.995426, 14.477973] },
+                { name: "entrance2", coords: [120.995558, 14.477923] },
+              ],
+            },
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [120.995418, 14.477976],
+                  [120.995383, 14.477882],
+                  [120.995732, 14.477753],
+                  [120.995768, 14.477844],
+                  [120.995418, 14.477976],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              COLISEUM: "OC_COLISEUM",
+              description:
+                "The Coliseum is a large facility used for school events, sports activities, and gatherings. It provides space for competitions, performances, and other institutional programs. Students and faculty can gather here for various school activities.",
+              imageUrls: [
+                "images/COLI.jpg",
+                "images/COLI(1).jpg",
+                "images/COLI_.jpg",
+              ],
+              entrances: [
+                { name: "entrance1", coords: [120.995615, 14.478403] },
+                { name: "entrance2", coords: [120.995834, 14.478848] },
+                { name: "entrance3", coords: [120.9956791, 14.4789423] },
+                { name: "entrance4", coords: [120.9957774, 14.4787327] },
+                { name: "entrance5", coords: [120.99565, 14.4784735] },
+              ],
+            },
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [120.995503, 14.47903],
+                  [120.995257, 14.478533],
+                  [120.9956, 14.478372],
+                  [120.995846, 14.478872],
+                  [120.995503, 14.47903],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              "VISUAL ARTS": "OC_VISUAL_ARTS",
+              description:
+                "The Performing Arts Section is a space for students to practice dancing, acting, and other creative performances. It supports school presentations, rehearsals, and artistic activities. This area helps students develop their talents, creativity, and confidence.",
+              imageUrls: ["images/VISUAL ARTS.jpg"],
+              entrances: [
+                { name: "entrance1", coords: [120.995583, 14.478337] },
+              ],
+            },
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [120.995257, 14.478533],
+                  [120.995222, 14.478459],
+                  [120.995566, 14.478301],
+                  [120.9956, 14.478372],
+                  [120.995257, 14.478533],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              POOL_AREA: "OC_POOL_AREA",
+              description:
+                "The Pool Area is a facility used for swimming lessons and physical education activities. Students can practice swimming techniques and develop their water safety skills. It provides a suitable environment for swimming practice, training, and recreational activities.",
+              imageUrls: [
+                "images/POOL AREA1.jpg",
+                "images/POOL AREA2.jpg",
+                "images/POOL AREA3.jpg",
+              ],
+              entrances: [
+                { name: "entrance1", coords: [120.995431, 14.478025] },
+              ],
+            },
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [120.995222, 14.478459],
+                  [120.995075, 14.47816],
+                  [120.99542, 14.478002],
+                  [120.995566, 14.478301],
+                  [120.995222, 14.478459],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              DPRO: "OC_DPRO",
+              description:
+                "The DPRO is an educational building that serves high school students at Olivarez College. It offers classrooms and facilities for daily lessons and school activities. The building also includes computer laboratories for Information Technology (IT) students and libraries that provide spaces for studying, researching, and learning.",
+              imageUrls: ["images/DPRO1.jpg", "images/DPRO2.jpg"],
+              entrances: [
+                { name: "entrance1", coords: [120.995752, 14.47861] },
+                { name: "entrance2", coords: [120.995647, 14.478387] },
+                { name: "entrance3", coords: [120.995625, 14.47807] },
+                { name: "entrance4", coords: [120.995531, 14.478144] },
+              ],
+            },
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [120.995764, 14.478635],
+                  [120.995522, 14.478124],
+                  [120.995785, 14.477984],
+                  [120.99604, 14.478504],
+                  [120.995764, 14.478635],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "walkway" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.9958979, 14.4789487],
+                [120.9958462, 14.4788419],
+                [120.9958365, 14.4788218],
+                [120.9957905, 14.4787267],
+                [120.9957374, 14.4786168],
+                [120.9956648, 14.4784667],
+                [120.9956301, 14.478395],
+                [120.9955987, 14.4783301],
+                [120.9955125, 14.4781518],
+                [120.9954472, 14.4780169],
+                [120.9954302, 14.4779817],
+                [120.995426, 14.477973],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "pool_area_entrance1" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.995431, 14.478025],
+                [120.9954472, 14.4780169],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "visual_arts_entrance1" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.995583, 14.478337],
+                [120.9955987, 14.4783301],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "casa_entrance1" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.996182, 14.478906],
+                [120.996111, 14.478753],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              walkway: "walkway",
+              label: "food_and_beverage_entrance1",
+            },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.9959348, 14.4789327],
+                [120.995899, 14.478854],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "elo_entrance1" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.9967514, 14.4789868],
+                [120.996643, 14.478807],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "caf_entrance1" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.996832, 14.479156],
+                [120.9967514, 14.4789868],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "criminology_entrance1" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.9975062, 14.4791709],
+                [120.997546, 14.479151],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "walkway" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.997149, 14.478798],
+                [120.997163, 14.478802],
+                [120.997181, 14.478809],
+                [120.997187, 14.478814],
+                [120.997234, 14.4789],
+                [120.997274, 14.478975],
+                [120.9972988, 14.4790211],
+                [120.997317, 14.479055],
+                [120.9974, 14.479207],
+                [120.997403, 14.479208],
+                [120.997499, 14.479157],
+                [120.9975062, 14.4791709],
+                [120.9975342, 14.4792249],
+                [120.997554, 14.479263],
+                [120.997565, 14.479311],
+                [120.997582, 14.479334],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "walkway" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.997149, 14.478798],
+                [120.997105, 14.4788189],
+                [120.9967514, 14.4789868],
+                [120.9967478, 14.4789885],
+                [120.996475, 14.479118],
+                [120.996443, 14.479074],
+                [120.996425, 14.479075],
+                [120.99639, 14.479072],
+                [120.996333, 14.479054],
+                [120.996292, 14.479006],
+                [120.996273, 14.478982],
+                [120.996251, 14.478958],
+                [120.996233, 14.47894],
+                [120.996211, 14.478924],
+                [120.996182, 14.478906],
+                [120.996166, 14.478896],
+                [120.996136, 14.478877],
+                [120.99613, 14.478875],
+                [120.996123, 14.478874],
+                [120.996108, 14.478873],
+                [120.996093, 14.478871],
+                [120.996084, 14.478869],
+                [120.996082, 14.478869],
+                [120.996079, 14.478869],
+                [120.996077, 14.47887],
+                [120.996074, 14.478871],
+                [120.995941, 14.47893],
+                [120.9959348, 14.4789327],
+                [120.9958979, 14.4789487],
+                [120.9957176, 14.4790267],
+                [120.995442, 14.479146],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "dpro_entrance1" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.9957374, 14.4786168],
+                [120.995752, 14.47861],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "coliseum_entrance1" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.995615, 14.478403],
+                [120.99563, 14.478395],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "dpro_entrance2" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.99563, 14.478395],
+                [120.995647, 14.478387],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "coliseum_entrance2" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.995834, 14.478848],
+                [120.9958462, 14.4788419],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "parking_entrance1" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.99624, 14.479605],
+                [120.996209, 14.479618],
+                [120.996212, 14.479622],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "walkway" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.996398, 14.479908],
+                [120.996426, 14.479896],
+                [120.996464, 14.479878],
+                [120.996532, 14.479842],
+                [120.9965902, 14.4798073],
+                [120.996594, 14.479805],
+                [120.996655, 14.479776],
+                [120.996767, 14.479724],
+                [120.9968115, 14.479703],
+                [120.9969538, 14.4796357],
+                [120.997078, 14.479577],
+                [120.99724, 14.479496],
+                [120.997254, 14.479488],
+                [120.997266, 14.479479],
+                [120.997275, 14.479468],
+                [120.997278, 14.479462],
+                [120.997279, 14.479456],
+                [120.997278, 14.479442],
+                [120.997277, 14.479425],
+                [120.997278, 14.479411],
+                [120.997283, 14.479393],
+                [120.9972901, 14.4793765],
+                [120.997295, 14.479365],
+                [120.997308, 14.479342],
+                [120.997318, 14.47933],
+                [120.997323, 14.479325],
+                [120.99733, 14.479321],
+                [120.997357, 14.479308],
+                [120.99741, 14.479285],
+                [120.9975342, 14.4792249],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "adl_entrance1" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.99596, 14.479067],
+                [120.995984, 14.479055],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "elo_entrance2" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.996182, 14.478962],
+                [120.996233, 14.47894],
+                [120.996252, 14.478928],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "walkway" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.9965902, 14.4798073],
+                [120.9965445, 14.4797128],
+                [120.9965177, 14.4796572],
+                [120.9964706, 14.4795597],
+                [120.9964307, 14.4794771],
+                [120.9963761, 14.479364],
+                [120.996182, 14.478962],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "walkway" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.996398, 14.479908],
+                [120.99624, 14.479605],
+                [120.996092, 14.479321],
+                [120.9959596, 14.4790672],
+                [120.9958979, 14.4789487],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "walkway" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.9965177, 14.4796572],
+                [120.996732, 14.479548],
+                [120.9967903, 14.4796617],
+                [120.9968115, 14.479703],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              walkway: "walkway",
+              label: "olivarez_general_hospital_entrance1",
+            },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.99725, 14.479045],
+                [120.9972988, 14.4790211],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "eye_center_entrance1" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.997105, 14.4788189],
+                [120.997083, 14.478776],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "dpro_resort_walkway" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.995625, 14.47807],
+                [120.995558, 14.477923],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "dpro_entrance4" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.9955125, 14.4781518],
+                [120.995531, 14.478144],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "walkway" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.996182, 14.478906],
+                [120.996191, 14.478872],
+                [120.996201, 14.478856],
+                [120.996215, 14.478846],
+                [120.996283, 14.47881],
+                [120.9963243, 14.4787915],
+                [120.996571, 14.4786811],
+                [120.996665, 14.478639],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "oli_s_den_entrance1" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.996431, 14.479477],
+                [120.996454, 14.479466],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "adl_entrance2" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.996431, 14.479477],
+                [120.996408, 14.479487],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "adl_entrance3" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.99624, 14.479605],
+                [120.996261, 14.479597],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "parking_entrance2" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.996398, 14.479908],
+                [120.996388, 14.479911],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "clinic_entrance1" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.9964706, 14.4795597],
+                [120.996495, 14.479549],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "walkway" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.9967478, 14.4789885],
+                [120.9965099, 14.4792288],
+                [120.9963761, 14.479364],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "oli_s_den_entrance2" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.9965099, 14.4792288],
+                [120.996569, 14.479279],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "bookstore_entrance1" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.9965445, 14.4797128],
+                [120.996569, 14.479701],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "adl_entrance4" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.996182, 14.478962],
+                [120.996059, 14.479023],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "ibed_entrance1" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.99596, 14.479067],
+                [120.99594, 14.479076],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "gymnasium_entrance1" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.996665, 14.478639],
+                [120.996649, 14.47861],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "gymnasium_entrance2" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.9963243, 14.4787915],
+                [120.99631, 14.478764],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "walkway" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.996571, 14.4786811],
+                [120.9966348, 14.4787926],
+                [120.996643, 14.478807],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "walkway" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.9966348, 14.4787926],
+                [120.996274, 14.478956],
+                [120.996259, 14.478924],
+                [120.996252, 14.478928],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              walkway: "walkway",
+              label: "food_and_beverage_entrance2",
+            },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.9958365, 14.4788218],
+                [120.99585, 14.478815],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              walkway: "walkway",
+              label: "unnamed_building_entrance",
+            },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.996081, 14.479326],
+                [120.996092, 14.479321],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "sdl_entrance1" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.996732, 14.479548],
+                [120.996746, 14.479541],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "tennis_court_entrance1" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.9969538, 14.4796357],
+                [120.996943, 14.479616],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              walkway: "walkway",
+              label: "auto_coliseum_entrance3",
+            },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.9956791, 14.4789423],
+                [120.9957176, 14.4790267],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              walkway: "walkway",
+              label: "auto_coliseum_entrance4",
+            },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.9957774, 14.4787327],
+                [120.9957905, 14.4787267],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              walkway: "walkway",
+              label: "auto_coliseum_entrance5",
+            },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.99565, 14.4784735],
+                [120.9956648, 14.4784667],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: { walkway: "walkway", label: "auto_sdl_entrance2" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.9968036, 14.4796553],
+                [120.9967903, 14.4796617],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              walkway: "walkway",
+              label: "auto_tennis_court_entrance2",
+            },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.9972441, 14.4793578],
+                [120.9972901, 14.4793765],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {
+              walkway: "walkway",
+              label: "auto_bridge_resort_walkway",
+            },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [120.995558, 14.477923],
+                [120.9954302, 14.4779817],
+              ],
+            },
+          },
+        ],
+      };
+
+      /* Config */
+      const CONTACT_EMAIL = "dwightjustin.reyes@olivarezcollege.edu.ph";
+      const EMAIL_CONFIG = {
+        publicKey: "0tSUEPFUAl8ioeFNs",
+        serviceId: "service_wdyvki8",
+        templateId: "template_86k881g",
+      };
+      const PEEK_FALLBACK_PX = 190; // only used if the sheet cannot be measured
+      const THEME_KEY = "ocnpTheme";
+      const DEBUG_WALKWAYS = false;
+      const NODE_M = 1.5;
+      const JUNCTION_M = 1.5;
+      const ENTRANCE_SNAP_M = 30;
+      const WALK_SPEED_MS = 1.3;
+      const MAX_OFF_NETWORK_M = 90; // GPS fixes further than this from any walkway are not routed
+      const GPS_MAX_ACCURACY_M = 50; // worse fixes are shown on the map but not used as a starting point
+      const ROUTE_REFRESH_M = 6; // re-plan a live route after the walker moves this far
+      const ARRIVE_M = 15;
+      const ORIGIN_KEY = "ocnpOrigin";
+      const GPS_OFF_KEY = "ocnpGpsOff";
+
+      if (window.emailjs) {
+        emailjs.init(EMAIL_CONFIG.publicKey);
+      }
+
+      /* Helpers & DOM */
+      const $ = (id) => document.getElementById(id);
+
+      function escapeHtml(value) {
+        return String(value).replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[c],
+        );
+      }
+
+      const menuToggle = $("menuToggle");
+      const closeDrawer = $("closeDrawer");
+      const sideDrawer = $("sideDrawer");
+      const navOverlay = $("navOverlay");
+
+      const searchInput = $("searchInput");
+      const searchBtn = $("searchBtn");
+      const searchIcon = $("searchIcon");
+      const searchDropdown = $("searchDropdown");
+      const buildingsList = $("buildingsList");
+
+      const bottomSheet = $("bottomSheet");
+      const bottomSheetOverlay = $("bottomSheetOverlay");
+      const sheetDragArea = $("sheetDragArea");
+      const sheetContent = $("sheetContent");
+      const sheetTitle = $("sheetTitle");
+      const sheetDescription = $("sheetDescription");
+      const sheetToggleBtn = $("sheetToggleBtn");
+      const closeSheetBtn = $("closeSheetBtn");
+      const goToDestinationBtn = $("goToDestinationBtn");
+      const sheetImgElements = [
+        $("sheetImage1"),
+        $("sheetImage2"),
+        $("sheetImage3"),
+      ];
+
+      const sheetTimeBadge = $("sheetTimeBadge");
+      const sheetTimeText = $("sheetTimeText");
+      const sheetDistanceBadge = $("sheetDistanceBadge");
+      const sheetDistanceText = $("sheetDistanceText");
+
+      const feedbackModal = $("feedbackModal");
+      const successModal = $("successModal");
+      const infoModal = $("infoModal");
+
+      /* Theme Setup */
+      function loadSavedTheme() {
+        try {
+          return localStorage.getItem(THEME_KEY);
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function saveTheme(value) {
+        try {
+          localStorage.setItem(THEME_KEY, value);
+        } catch (e) {}
+      }
+
+      let isDarkMode = (() => {
+        const saved = loadSavedTheme();
+        if (saved) return saved === "dark";
+        return !!(
+          window.matchMedia &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches
+        );
+      })();
+
+      document.body.classList.toggle("dark-theme", isDarkMode);
+
+      /* Map Setup */
+      const oc_map = L.map("oc_map", {
+        zoomControl: false,
+        rotate: true,
+        touchRotate: true,
+        shiftKeyRotate: true,
+        dragRotate: true,
+        bounceAtZoom: false,
+        touchZoom: "center",
+        rotateControl: {
+          position: "topright",
+          closeOnZeroBearing: true,
+        },
+      }).setView([14.4788, 120.9964], 18);
+
+      if (oc_map.touchRotate) {
+        oc_map.touchRotate.enable();
+      }
+
+      $("oc_map").addEventListener("contextmenu", (e) => e.preventDefault());
+
+      oc_map.on("click", () => {
+        if (currentSnapState !== "closed") {
+          closeBottomSheet();
+        }
+        setDropdownOpen(false);
+      });
+
+      const light_map = L.tileLayer(
+        "https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png",
+        {
+          minZoom: 0,
+          maxZoom: 20,
+          attribution:
+            '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        },
+      );
+
+      const dark_map = L.tileLayer(
+        "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png",
+        {
+          minZoom: 0,
+          maxZoom: 20,
+          attribution:
+            '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>, &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        },
+      );
+
+      let currentTileLayer = isDarkMode ? dark_map : light_map;
+      currentTileLayer.addTo(oc_map);
+
+      let userMarker = null;
+      let accuracyCircle = null;
+
+      const campusBuildings = [];
+      const buildingMarkers = [];
+      let labelsVisible = false;
+
+      /* Modals */
+      const modalOpeners = new Map();
+
+      function openModal(modal, initialFocus) {
+        const active = document.activeElement;
+        modalOpeners.set(
+          modal,
+          active && active.closest && active.closest("#sideDrawer")
+            ? menuToggle
+            : active,
+        );
+        modal.classList.add("active");
+        if (initialFocus) initialFocus.focus();
+      }
+
+      function closeModal(modal) {
+        if (!modal.classList.contains("active")) return;
+        modal.classList.remove("active");
+        const opener = modalOpeners.get(modal);
+        modalOpeners.delete(modal);
+        if (
+          opener &&
+          document.contains(opener) &&
+          typeof opener.focus === "function"
+        ) {
+          opener.focus();
+        }
+      }
+
+      [feedbackModal, successModal, infoModal].forEach((modal) => {
+        modal.addEventListener("click", (e) => {
+          if (e.target === modal) closeModal(modal);
+        });
+      });
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          const modal = document.querySelector(".modal-overlay.active");
+          if (modal) {
+            closeModal(modal);
+            return;
+          }
+          if (sideDrawer.classList.contains("active")) {
+            closeMenu();
+            return;
+          }
+          if (currentSnapState !== "closed") {
+            closeBottomSheet(true);
+            return;
+          }
+          if (routeState) {
+            clearRoute();
+            return;
+          }
+        }
+
+        if (e.key === "Tab") {
+          const layer =
+            document.querySelector(".modal-overlay.active") ||
+            (sideDrawer.classList.contains("active") ? sideDrawer : null);
+          if (!layer) return;
+
+          const focusable = layer.querySelectorAll(
+            "button:not([disabled]), input, textarea, a[href]",
+          );
+          if (!focusable.length) return;
+          const first = focusable[0];
+          const last = focusable[focusable.length - 1];
+
+          if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      });
+
+      /* Bottom Sheet Logic */
+      let activeBuildingData = null;
+      let currentSnapState = "closed";
+      let startY = 0;
+      let currentY = 0;
+      let initialTransformY = 0;
+      let isDragging = false;
+      let sheetOpener = null;
+
+      const safeAreaProbe = document.createElement("div");
+      safeAreaProbe.style.cssText =
+        "position:fixed;left:0;bottom:0;width:0;height:env(safe-area-inset-bottom,0px);visibility:hidden;pointer-events:none;";
+      document.body.appendChild(safeAreaProbe);
+
+      /* The peek height is the real height of the drag area (handle, title, badges, button and safe area) */
+      function getPeekHeight() {
+        const measured = Math.ceil(
+          sheetDragArea.getBoundingClientRect().height,
+        );
+        return measured > 0
+          ? measured
+          : PEEK_FALLBACK_PX + safeAreaProbe.offsetHeight;
+      }
+
+      function getPeekOffsetY() {
+        return window.innerHeight - getPeekHeight();
+      }
+
+      function snapToState(state) {
+        currentSnapState = state;
+        isDragging = false;
+        bottomSheet.classList.remove("dragging");
+        bottomSheet.style.transition = "";
+
+        document.documentElement.style.setProperty(
+          "--peek-height",
+          getPeekHeight() + "px",
+        );
+
+        if (state === "expanded") {
+          bottomSheet.style.transform = "translateY(0px)";
+          bottomSheetOverlay.classList.add("active");
+        } else if (state === "peek") {
+          bottomSheet.style.transform = `translateY(${getPeekOffsetY()}px)`;
+          bottomSheetOverlay.classList.remove("active");
+        } else {
+          bottomSheet.style.transform = "translateY(100%)";
+          bottomSheetOverlay.classList.remove("active");
+        }
+
+        bottomSheet.inert = state === "closed";
+        sheetContent.inert = state !== "expanded";
+
+        sheetToggleBtn.setAttribute(
+          "aria-expanded",
+          String(state === "expanded"),
+        );
+        sheetToggleBtn.setAttribute(
+          "aria-label",
+          state === "expanded" ? "Collapse details" : "Expand details",
+        );
+
+        document.body.classList.remove("sheet-peek", "sheet-expanded");
+        if (state !== "closed") document.body.classList.add("sheet-" + state);
+      }
+
+      function openBottomSheet(data) {
+        sheetTitle.textContent = data.title || "Location Details";
+        sheetDescription.textContent =
+          data.description || "No description available.";
+        activeBuildingData = data;
+        refreshSheetActions();
+
+        if (!bottomSheet.contains(document.activeElement)) {
+          sheetOpener = document.activeElement;
+        }
+
+        const imageUrls = Array.isArray(data.imageUrls)
+          ? data.imageUrls
+          : data.imageUrl
+            ? [data.imageUrl]
+            : [];
+
+        sheetImgElements.forEach((imgEl, idx) => {
+          const placeholder = imgEl.parentElement.querySelector(
+            ".sheet-placeholder-text",
+          );
+
+          if (imageUrls[idx]) {
+            imgEl.src = imageUrls[idx];
+            imgEl.alt = `${data.title || "Location"} photo ${idx + 1}`;
+            imgEl.style.display = "block";
+            if (placeholder) placeholder.style.display = "none";
+          } else {
+            imgEl.removeAttribute("src");
+            imgEl.alt = "";
+            imgEl.style.display = "none";
+            if (placeholder) placeholder.style.display = "flex";
+          }
+        });
+
+        sheetContent.scrollTop = 0;
+        snapToState("peek");
+        sheetTitle.focus({ preventScroll: true });
+      }
+
+      function closeBottomSheet(restoreFocus = false) {
+        snapToState("closed");
+        if (
+          restoreFocus === true &&
+          sheetOpener &&
+          sheetOpener !== document.body &&
+          document.contains(sheetOpener) &&
+          typeof sheetOpener.focus === "function"
+        ) {
+          sheetOpener.focus();
+        }
+      }
+
+      function onTouchStart(e) {
+        if (
+          !(e.target.closest("#sheetDragArea") || sheetContent.scrollTop === 0)
+        )
+          return;
+
+        isDragging = true;
+        startY = currentY = e.touches[0].clientY;
+
+        if (currentSnapState === "expanded") {
+          initialTransformY = 0;
+        } else if (currentSnapState === "peek") {
+          initialTransformY = getPeekOffsetY();
+        } else {
+          initialTransformY = window.innerHeight;
+        }
+
+        bottomSheet.classList.add("dragging");
+        bottomSheet.style.transition = "none";
+      }
+
+      function onTouchMove(e) {
+        if (!isDragging) return;
+        currentY = e.touches[0].clientY;
+        const newTransformY = Math.max(
+          0,
+          initialTransformY + (currentY - startY),
+        );
+        bottomSheet.style.transform = `translateY(${newTransformY}px)`;
+      }
+
+      function onTouchEnd() {
+        if (!isDragging) return;
+        isDragging = false;
+
+        const deltaY = currentY - startY;
+
+        if (currentSnapState === "peek") {
+          if (deltaY < -60) snapToState("expanded");
+          else if (deltaY > 60) snapToState("closed");
+          else snapToState("peek");
+        } else if (currentSnapState === "expanded") {
+          if (deltaY > 120) snapToState("closed");
+          else if (deltaY > 50) snapToState("peek");
+          else snapToState("expanded");
+        } else {
+          snapToState(deltaY < -100 ? "peek" : "closed");
+        }
+      }
+
+      bottomSheet.addEventListener("touchstart", onTouchStart, {
+        passive: true,
+      });
+      bottomSheet.addEventListener("touchmove", onTouchMove, { passive: true });
+      bottomSheet.addEventListener("touchend", onTouchEnd);
+      bottomSheet.addEventListener("touchcancel", () => {
+        if (isDragging) snapToState(currentSnapState);
+      });
+
+      window.addEventListener("resize", () => {
+        if (currentSnapState === "peek") snapToState("peek");
+      });
+
+      bottomSheetOverlay.addEventListener("click", () => closeBottomSheet());
+      closeSheetBtn.addEventListener("click", () => closeBottomSheet(true));
+      sheetToggleBtn.addEventListener("click", () => {
+        snapToState(currentSnapState === "expanded" ? "peek" : "expanded");
+      });
+
+      /* GeoJSON Buildings */
+      const NON_NAME_KEYS = ["entrances", "perimeter", "walkway"];
+
+      function getBuildingKey(props) {
+        if (props.name) return "name";
+        return (
+          Object.keys(props).find((k) => !NON_NAME_KEYS.includes(k)) || null
+        );
+      }
+
+      /* Helper to match map marker icons and colors */
+      function getBuildingIconInfo(buildingName) {
+        let iconClass = "fa-solid fa-building";
+        let iconColor = "#0B793D";
+
+        if (buildingName.includes("GYM")) {
+          iconClass = "fa-solid fa-dumbbell";
+        } else if (
+          buildingName.includes("HOSPITAL") ||
+          buildingName.includes("EYE CENTER") ||
+          buildingName.includes("CLINIC")
+        ) {
+          iconClass = "fa-solid fa-hospital";
+          iconColor = "#d9534f";
+        } else if (buildingName.includes("PARKING")) {
+          iconClass = "fa-solid fa-square-parking";
+          iconColor = "#2196F3";
+        } else if (
+          buildingName.includes("RESORT") ||
+          buildingName.includes("BOTANICAL")
+        ) {
+          iconClass = "fa-solid fa-landmark";
+          iconColor = "#0B793D";
+        } else if (buildingName.includes("OLI'S DEN")) {
+          iconClass = "fa-solid fa-utensils";
+          iconColor = "#0B793D";
+        } else if (buildingName.includes("CAFÉ")) {
+          iconClass = "fa-solid fa-mug-saucer";
+          iconColor = "#0B793D";
+        } else if (buildingName.includes("TENNIS_COURT")) {
+          iconClass = "fa-solid fa-table-tennis-paddle-ball";
+          iconColor = "#0B793D";
+        } else if (buildingName.includes("POOL_AREA")) {
+          iconClass = "fa-solid fa-water-ladder";
+          iconColor = "#0B793D";
+        } else if (buildingName.includes("HM_LAB")) {
+          iconClass = "fa-solid fa-kitchen-set";
+          iconColor = "#0B793D";
+        }
+
+        return { iconClass, iconColor };
+      }
+
+      const geoLayer = L.geoJSON(geojsonData, {
+        filter: (feature) => DEBUG_WALKWAYS || !feature.properties.walkway,
+        style: function (feature) {
+          const props = feature.properties;
+          if (props.perimeter) {
+            return {
+              color: "#d9534f",
+              weight: 3,
+              dashArray: "5, 5",
+              fill: false,
             };
+          } else if (props.walkway) {
+            return {
+              color: "#8a8a8a",
+              weight: 2,
+              dashArray: "2 4",
+              opacity: 0.8,
+            };
+          } else if (!getBuildingKey(props)) {
+            return {
+              color: "#8a8a8a",
+              weight: 1,
+              fillColor: "#8a8a8a",
+              fillOpacity: 0.15,
+            };
+          } else if (props.PARKING) {
+            return {
+              color: "#2196F3",
+              weight: 1.5,
+              fillColor: "#2196F3",
+              fillOpacity: 0.25,
+            };
+          }
+          return {
+            color: "#0B793D",
+            weight: 1.5,
+            fillColor: "#0B793D",
+            fillOpacity: 0.2,
+          };
+        },
+        onEachFeature: function (feature, layer) {
+          const props = feature.properties;
+          if (
+            props.perimeter ||
+            props.walkway ||
+            feature.geometry.type === "Point"
+          )
+            return;
 
-            fetch("https://valhalla.openstreetmap.de/route", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(valhallaPayload)
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data && data.trip && data.trip.legs) {
-                    const shape = data.trip.legs[0].shape;
-                    const decodedCoords = decodePolyline(shape);
+          const nameKey = getBuildingKey(props);
+          if (!nameKey) return;
 
-                    if (routeLayer) oc_map.removeLayer(routeLayer);
-                    routeLayer = L.polyline(decodedCoords, { color: '#0B793D', weight: 5, opacity: 0.8 }).addTo(oc_map);
-                    oc_map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
-                } else {
-                    alert("Could not calculate walking path.");
-                }
-            })
-            .catch(err => {
-                console.error("Routing error:", err);
-                alert("Routing service unavailable. Please check connection.");
-            });
-        }
+          let center = null;
+          try {
+            center = layer.getBounds().getCenter();
+          } catch (e) {
+            console.warn("Invalid bounds for feature.");
+          }
 
-        function decodePolyline(str, precision = 6) {
-            let index = 0, lat = 0, lng = 0, coordinates = [], shift = 0, result = 0, byte = null, latitude_change, longitude_change, factor = Math.pow(10, precision);
-            while (index < str.length) {
-                byte = null; shift = 0; result = 0;
-                do {
-                    byte = str.charCodeAt(index++) - 63;
-                    result |= (byte & 0x1f) << shift;
-                    shift += 5;
-                } while (byte >= 0x20);
-                latitude_change = ((result & 1) ? ~(result >> 1) : (result >> 1));
-                shift = 0; result = 0;
-                do {
-                    byte = str.charCodeAt(index++) - 63;
-                    result |= (byte & 0x1f) << shift;
-                    shift += 5;
-                } while (byte >= 0x20);
-                longitude_change = ((result & 1) ? ~(result >> 1) : (result >> 1));
-                lat += latitude_change; lng += longitude_change;
-                coordinates.push([lat / factor, lng / factor]);
+          const buildingName = props.name || nameKey;
+          const buildingId = props.name ? props.id || "" : props[nameKey] || "";
+
+          const doors = (props.entrances || [])
+            .filter((e) => !/^car/i.test(e.name))
+            .map((e) => ({
+              name: e.name,
+              latlng: L.latLng(e.coords[1], e.coords[0]),
+            }));
+          const entrances = doors.map((d) => d.latlng);
+
+          const buildingObj = {
+            title: buildingName,
+            id: buildingId,
+            description: props.description || `Building ID: ${buildingId}`,
+            imageUrls: props.imageUrls || [],
+            coords: center,
+            doors,
+            entrances: entrances.length ? entrances : center ? [center] : [],
+            layer: layer,
+          };
+
+          campusBuildings.push(buildingObj);
+
+          const handleBuildingClick = (e) => {
+            if (e && e.originalEvent) {
+              L.DomEvent.stopPropagation(e);
             }
-            return coordinates;
-        }
-
-        // --- GeoJSON Data Integration ---
-        const geojsonData = {
-          "type": "FeatureCollection",
-          "features": [
-            {
-              "type": "Feature",
-              "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                  [
-                    [120.995903, 14.478569],
-                    [120.99604, 14.478503],
-                    [120.996153, 14.478734],
-                    [120.996013, 14.478802],
-                    [120.995903, 14.478569]
-                  ]
-                ]
-              },
-              "properties": {
-                "CASA": "OC_CASA",
-                "entrances": [
-                    { "name": "entrance1", "coords": [120.9961076, 14.4787418] }
-                ]
-              },
-              "bbox": [120.995903, 14.478503, 120.996153, 14.478802]
-            },
-            {
-              "type": "Feature",
-              "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                  [
-                    [120.995503, 14.47903],
-                    [120.995257, 14.478533],
-                    [120.9956, 14.478372],
-                    [120.995846, 14.478872],
-                    [120.995503, 14.47903]
-                  ]
-                ]
-              },
-              "properties": {
-                "COLISEUM": "OC_COLISEUM",
-                "entrances": [
-                    { "name": "entrance1", "coords": [120.9956791, 14.4789423] },
-                    { "name": "entrance2", "coords": [120.9957774438681, 14.478732658268525] },
-                    { "name": "entrance3", "coords": [120.99564995201155, 14.478473528478775] }
-                ]
-              },
-              "bbox": [120.995257, 14.478372, 120.995846, 14.47903]
-            },
-            {
-              "type": "Feature",
-              "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                  [
-                    [120.995257, 14.478533],
-                    [120.995222, 14.478459],
-                    [120.995566, 14.478301],
-                    [120.9956, 14.478372],
-                    [120.995257, 14.478533]
-                  ]
-                ]
-              },
-              "properties": {
-                "VISUAL ARTS": "OC_VISUAL ARTS",
-                "entrances": [
-                    { "name": "entrance1", "coords": [120.99558392201025, 14.478338425374373] }
-                ]
-              },
-              "bbox": [120.995222, 14.478301, 120.9956, 14.478533]
-            },
-            {
-              "type": "Feature",
-              "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                  [
-                    [120.995222, 14.478459],
-                    [120.995075, 14.47816],
-                    [120.99542, 14.478002],
-                    [120.995566, 14.478301],
-                    [120.995222, 14.478459]
-                  ]
-                ]
-              },
-              "properties": {
-                "POOL AREA": "OC_POOL AREA",
-                "entrances": [
-                    { "name": "entrance1", "coords": [120.99545055843339, 14.478064581997145] }
-                ]
-              },
-              "bbox": [120.995075, 14.478002, 120.995566, 14.478459]
-            },
-            {
-              "type": "Feature",
-              "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                  [
-                    [120.995764, 14.478635],
-                    [120.995903, 14.478569],
-                    [120.995955, 14.478678],
-                    [120.996013, 14.478801],
-                    [120.995874, 14.478866],
-                    [120.99582, 14.478753],
-                    [120.995764, 14.478635]
-                  ]
-                ]
-              },
-              "properties": {
-                "KITCHEN": "OC_HM-LAB",
-                "entrances": [
-                    { "name": "entrance1", "coords": [120.9959015, 14.4788548] }
-                ]
-              },
-              "bbox": [120.995764, 14.478569, 120.996013, 14.478866]
-            },
-            {
-              "type": "Feature",
-              "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                  [
-                    [120.995764, 14.478635],
-                    [120.995522, 14.478124],
-                    [120.995785, 14.477984],
-                    [120.99604, 14.478504],
-                    [120.995764, 14.478635]
-                  ]
-                ]
-              },
-              "properties": {
-                "DPRO": "OC_DPRO",
-                "entrances": [
-                    { "name": "entrance1", "coords": [120.9957326, 14.4785637] },
-                    { "name": "entrance2", "coords": [120.99554275771337, 14.47816783136998] },
-                    { "name": "entrance3", "coords": [120.9956231549142, 14.47807015327761] }
-                ]
-              },
-              "bbox": [120.995522, 14.477984, 120.99604, 14.478635]
-            },
-            {
-              "type": "Feature",
-              "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                  [
-                    [120.995418, 14.477976],
-                    [120.995383, 14.477882],
-                    [120.995732, 14.477753],
-                    [120.995768, 14.477844],
-                    [120.995418, 14.477976]
-                  ]
-                ]
-              },
-              "properties": {
-                "RESORT": "OC_RESORT",
-                "entrances": [
-                    { "name": "entrance1", "coords": [120.9954426739182, 14.477966694407993] }
-                ]
-              },
-              "bbox": [120.995383, 14.477753, 120.995768, 14.477976]
-            },
-            {
-              "type": "Feature",
-              "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                  [
-                    [120.996228, 14.478802],
-                    [120.996124, 14.478594],
-                    [120.996641, 14.478356],
-                    [120.996746, 14.478566],
-                    [120.996228, 14.478802]
-                  ]
-                ]
-              },
-              "properties": {
-                "GYMNASIUM": "OC_GYMNASIUM",
-                "entrances": [
-                    { "name": "entrance1", "coords": [120.9963312, 14.4787549] },
-                    { "name": "entrance2", "coords": [120.9966599, 14.4786009] }
-                ]
-              },
-              "bbox": [120.996124, 14.478356, 120.996746, 14.478802]
-            },
-            {
-              "type": "Feature",
-              "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                  [
-                    [120.997023, 14.478803],
-                    [120.996963, 14.478683],
-                    [120.996901, 14.478564],
-                    [120.997067, 14.478487],
-                    [120.997188, 14.478728],
-                    [120.997023, 14.478803]
-                  ]
-                ]
-              },
-              "properties": {
-                "EYE CENTER - OGH": "OGH_EYE-CENTER",
-                "entrances": [
-                    { "name": "entrance1", "coords": [120.9971067, 14.4787617] }
-                ]
-              },
-              "bbox": [120.996901, 14.478487, 120.997188, 14.478803]
-            },
-            {
-              "type": "Feature",
-              "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                  [
-                    [120.997589, 14.479244],
-                    [120.997507, 14.479067],
-                    [120.997607, 14.479023],
-                    [120.997687, 14.479199],
-                    [120.997589, 14.479244]
-                  ]
-                ]
-              },
-              "properties": {
-                "CRIMINOLOGY BUILDING": "OC_CRIM",
-                "entrances": [
-                    { "name": "entrance1", "coords": [120.9975242, 14.4791037] }
-                ]
-              },
-              "bbox": [120.997507, 14.479023, 120.997687, 14.479244]
-            },
-            {
-              "type": "Feature",
-              "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                  [
-                    [120.996471, 14.479502],
-                    [120.996431, 14.479424],
-                    [120.996634, 14.47921],
-                    [120.996621, 14.479185],
-                    [120.996765, 14.479117],
-                    [120.996808, 14.479206],
-                    [120.996854, 14.479301],
-                    [120.996471, 14.479502]
-                  ]
-                ]
-              },
-              "properties": {
-                "OLI'S DEN": "OC_CAFETERIA",
-                "entrances": [
-                    { "name": "entrance1", "coords": [120.9965527, 14.4792975] },
-                    { "name": "entrance2", "coords": [120.9964432, 14.4794603] }
-                ]
-              },
-              "bbox": [120.996431, 14.479117, 120.996854, 14.479502]
-            },
-            {
-              "type": "Feature",
-              "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                  [
-                    [120.996855, 14.479301],
-                    [120.996793, 14.479174],
-                    [120.996861, 14.479142],
-                    [120.996924, 14.479268],
-                    [120.996855, 14.479301]
-                  ]
-                ]
-              },
-              "properties": {
-                "CAFÉ": "OC_CAFÉ",
-                "entrances": [
-                    { "name": "entrance1", "coords": [120.9968241, 14.4791587] }
-                ]
-              },
-              "bbox": [120.996793, 14.479142, 120.996924, 14.479301]
-            },
-            {
-              "type": "Feature",
-              "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                  [
-                    [120.996924, 14.479269],
-                    [120.996861, 14.479142],
-                    [120.99709, 14.479034],
-                    [120.997029, 14.47891],
-                    [120.997153, 14.478851],
-                    [120.997357, 14.479256],
-                    [120.997233, 14.479317],
-                    [120.997154, 14.479163],
-                    [120.996924, 14.479269]
-                  ]
-                ]
-              },
-              "properties": {
-                "OLIVAREZ GENERAL HOSPITAL": "OGH",
-                "entrances": [
-                    { "name": "entrance1", "coords": [120.9972304, 14.4790346] }
-                ]
-              },
-              "bbox": [120.996861, 14.478851, 120.997357, 14.479317]
-            },
-            {
-              "type": "Feature",
-              "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                  [
-                    [120.996528, 14.479618],
-                    [120.996471, 14.479502],
-                    [120.996637, 14.479415],
-                    [120.996695, 14.479534],
-                    [120.996617, 14.479573],
-                    [120.996528, 14.479618]
-                  ]
-                ]
-              },
-              "properties": {
-                "CLINIC": "OC_CLINIC",
-                "entrances": [
-                    { "name": "entrance1", "coords": [120.99650246254262, 14.479566029034112] }
-                ]
-              },
-              "bbox": [120.996471, 14.479415, 120.996695, 14.479618]
-            },
-            {
-              "type": "Feature",
-              "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                  [
-                    [120.996551, 14.479665],
-                    [120.996719, 14.479578],
-                    [120.996778, 14.479693],
-                    [120.996607, 14.479775],
-                    [120.996551, 14.479665]
-                  ]
-                ]
-              },
-              "properties": {
-                "BOOKSTORE": "OC_BOOKSTORE",
-                "entrances": [
-                    { "name": "entrance1", "coords": [120.9965573, 14.4796969] }
-                ]
-              },
-              "bbox": [120.996551, 14.479578, 120.996778, 14.479775]
-            },
-            {
-              "type": "Feature",
-              "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                  [
-                    [120.996814, 14.479676],
-                    [120.996673, 14.479396],
-                    [120.996789, 14.479336],
-                    [120.996933, 14.479621],
-                    [120.996814, 14.479676]
-                  ]
-                ]
-              },
-              "properties": {
-                "SDL BUILDING": "OC_SDL",
-                "entrances": [
-                    { "name": "entrance1", "coords": [120.9967432129069, 14.479535429886065] },
-                    { "name": "entrance2", "coords": [120.99680355890432, 14.479655265909274] }
-                ]
-              },
-              "bbox": [120.996673, 14.479336, 120.996933, 14.479676]
-            },
-            {
-              "type": "Feature",
-              "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                  [
-                    [120.996275, 14.478974],
-                    [120.996235, 14.478894],
-                    [120.9969, 14.478591],
-                    [120.996941, 14.478672],
-                    [120.996275, 14.478974]
-                  ]
-                ]
-              },
-              "properties": {
-                "ELO BUILDING": "OC_ELO",
-                "entrances": [
-                    { "name": "entrance1", "coords": [120.9962516, 14.4789395] },
-                    { "name": "entrance2", "coords": [120.9965141, 14.4788727] }
-                ]
-              },
-              "bbox": [120.996235, 14.478591, 120.996941, 14.478874]
-            },
-            {
-              "type": "Feature",
-              "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                  [
-                    [120.995613, 14.479324],
-                    [120.995519, 14.479128],
-                    [120.995888, 14.478964],
-                    [120.99598, 14.479161],
-                    [120.995613, 14.479324]
-                  ],
-                  [
-                    [120.995683, 14.479207],
-                    [120.995866, 14.479127],
-                    [120.995839, 14.479071],
-                    [120.995656, 14.479151],
-                    [120.995683, 14.479207]
-                  ]
-                ]
-              },
-              "properties": {
-                "IBED": "OC_IBED",
-                "entrances": [
-                    { "name": "entrance1", "coords": [120.9959253, 14.4790586] }
-                ]
-              },
-              "bbox": [120.995519, 14.478964, 120.99598, 14.479324]
-            },
-            {
-              "type": "Feature",
-              "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                  [
-                    [120.996408, 14.479887],
-                    [120.995975, 14.479038],
-                    [120.99605, 14.479002],
-                    [120.996166, 14.479227],
-                    [120.996279, 14.479453],
-                    [120.99637, 14.479412],
-                    [120.996424, 14.479519],
-                    [120.996478, 14.479622],
-                    [120.996382, 14.479667],
-                    [120.996478, 14.479853],
-                    [120.996408, 14.479887]
-                  ]
-                ]
-              },
-              "properties": {
-                "ADL BUILDING": "OC_ADL",
-                "entrances": [
-                    { "name": "entrance1", "coords": [120.99601142121669, 14.479020517815986] },
-                    { "name": "entrance2", "coords": [120.9963953, 14.4794815] },
-                    { "name": "entrance3", "coords": [120.9962337, 14.4795478] },
-                    { "name": "entrance4", "coords": [120.9964611, 14.4798509] }
-                ]
-              },
-              "bbox": [120.995975, 14.479002, 120.996478, 14.479887]
-            },
-            {
-              "type": "Feature",
-              "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                  [
-                    [120.996016, 14.480026],
-                    [120.995965, 14.479905],
-                    [120.996328, 14.47978],
-                    [120.996389, 14.479912],
-                    [120.996016, 14.480026]
-                  ]
-                ]
-              },
-              "properties": {
-                "PARKING": "OC_PARKING",
-                "entrances": [
-                    { "name": "car_entrance", "coords": [120.9959815, 14.4799264] },
-                    { "name": "entrance1", "coords": [120.9962861, 14.479802] },
-                    { "name": "entrance2", "coords": [120.9963746, 14.479896] }
-                ]
-              },
-              "bbox": [120.995965, 14.47978, 120.996389, 14.480026]
-            },
-            {
-              "type": "Feature",
-              "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                  [
-                    [120.996933, 14.479621],
-                    [120.996789, 14.479335],
-                    [120.996925, 14.479268],
-                    [120.997088, 14.479194],
-                    [120.99723, 14.479479],
-                    [120.996933, 14.479621]
-                  ]
-                ]
-              },
-              "properties": {
-                "Tennis Court": "OC_TENNIS",
-                "entrances": [
-                    { "name": "entrance1", "coords": [120.9972441, 14.4793578] },
-                    { "name": "entrance2", "coords": [120.9969204, 14.4795868] }
-                ]
-              },
-              "bbox": [120.996789, 14.479194, 120.99723, 14.479621]
-            },
-            {
-              "type": "Feature",
-              "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                  [
-                    [120.995813, 14.479721],
-                    [120.995695, 14.47949],
-                    [120.996063, 14.479304],
-                    [120.996322, 14.479774],
-                    [120.995958, 14.4799],
-                    [120.995813, 14.479721]
-                  ]
-                ]
-              },
-              "properties": {
-                "BOTANICAL": "OC_BOTANICAL",
-                "entrances": [
-                    { "name": "entrance1", "coords": [120.99629107811809, 14.479717886932422] },
-                    { "name": "entrance2", "coords": [120.99609176968977, 14.479356207545141] }
-                ]
-              },
-              "bbox": [120.995695, 14.479304, 120.996322, 14.4799]
-            },
-            {
-              "type": "Feature",
-              "properties": {
-                "perimeter": "oc_perimeter"
-              },
-              "geometry": {
-                "type": "LineString",
-                "coordinates": [
-                  [120.9961238, 14.4785414],
-                  [120.9957475, 14.4776817],
-                  [120.9949148, 14.4780168],
-                  [120.995758, 14.479822],
-                  [120.9959938, 14.4801134],
-                  [120.996671, 14.4798657],
-                  [120.9977596, 14.4792295],
-                  [120.9976321, 14.4789594],
-                  [120.9973754, 14.4790846],
-                  [120.9972207, 14.4787881],
-                  [120.9972674, 14.478768],
-                  [120.9970913, 14.4783921],
-                  [120.9968115, 14.4785251],
-                  [120.996676, 14.4782822],
-                  [120.9961242, 14.4785397]
-                ]
-              }
+            if (center) {
+              oc_map.flyTo([center.lat, center.lng], 19, {
+                animate: true,
+                duration: 1.2,
+              });
             }
-          ]
-        };
+            openBottomSheet(buildingObj);
+          };
 
-        L.geoJSON(geojsonData, {
-            style: function (feature) {
-                if (feature.properties.perimeter) {
-                    return { color: "#d9534f", weight: 3, dashArray: "5, 5", fill: false };
-                } else if (feature.properties.PARKING) {
-                    return { color: "#2196F3", weight: 1.5, fillColor: "#2196F3", fillOpacity: 0.25 };
-                } 
-                return { color: "#0B793D", weight: 1.5, fillColor: "#0B793D", fillOpacity: 0.2 };
-            },
-            onEachFeature: function (feature, layer) {
-                if (feature.properties.perimeter || feature.geometry.type === "Point") return;
+          layer.on("click", handleBuildingClick);
 
-                let center = null;
-                try {
-                    center = layer.getBounds().getCenter();
-                } catch (e) {
-                    console.warn("Invalid bounds for feature.");
-                }
+          if (center) {
+            const { iconClass, iconColor } = getBuildingIconInfo(buildingName);
 
-                let propKey = Object.keys(feature.properties)[0];
-                let buildingName = propKey ? propKey : "Campus Location";
-                let buildingId = feature.properties[propKey] || "";
-                let entrances = feature.properties.entrances || [];
-
-                const buildingObj = {
-                    title: buildingName,
-                    description: `Building ID: ${buildingId}`,
-                    imageUrls: [],
-                    coords: center,
-                    entrances: entrances
-                };
-
-                campusBuildings.push(buildingObj);
-
-                const handleBuildingClick = (e) => {
-                    if (e && e.originalEvent) {
-                        L.DomEvent.stopPropagation(e);
-                    }
-                    if (center) {
-                        oc_map.flyTo([center.lat, center.lng], 19, { animate: true, duration: 1.2 });
-                    }
-                    openBottomSheet(buildingObj);
-                };
-
-                layer.on('click', handleBuildingClick);
-
-                if (center) {
-                    let iconClass = "fa-solid fa-building";
-                    let iconColor = "#0B793D";
-                    
-                    if (buildingName.includes("GYM")) {
-                        iconClass = "fa-solid fa-dumbbell";
-                    } else if (buildingName.includes("HOSPITAL") || buildingName.includes("EYE CENTER") || buildingName.includes("CLINIC")) {
-                        iconClass = "fa-solid fa-hospital";
-                        iconColor = "#d9534f";
-                    } else if (buildingName.includes("PARKING")) {
-                        iconClass = "fa-solid fa-square-parking";
-                        iconColor = "#2196F3";
-                    } 
-
-                    // Building Label Marker (Label text hidden by default on initial page load)
-                    const customIcon = L.divIcon({
-                        className: 'building-label-marker',
-                        html: `<div class="map-label-pill">
+            const customIcon = L.divIcon({
+              className: "map-label-marker",
+              html: `<div class="map-label-pill" aria-hidden="true">
                                    <div class="map-label-icon" style="color: ${iconColor};">
                                        <i class="${iconClass}"></i>
                                    </div>
-                                   <span class="map-label-text hide-label">${buildingName}</span>
+                                   <span class="map-label-text hide-label">${escapeHtml(buildingName)}</span>
                                </div>`,
-                        iconSize: null,
-                        iconAnchor: [15, 15]
-                    });
+              iconSize: null,
+              iconAnchor: [15, 15],
+            });
 
-                    const marker = L.marker(center, { icon: customIcon }).addTo(oc_map);
-                    marker.on('click', handleBuildingClick);
-                    buildingMarkers.push(marker);
-                }
+            const marker = L.marker(center, { icon: customIcon }).addTo(oc_map);
+            marker.getElement().setAttribute("aria-label", buildingName);
+            marker.on("click", handleBuildingClick);
+            buildingMarkers.push(marker);
+          }
+        },
+      }).addTo(oc_map);
+
+      campusBuildings.sort((a, b) => a.title.localeCompare(b.title));
+
+      /* ==========================================================
+           Walkway graph & pathfinding
+           ========================================================== */
+      const KX = 111320 * Math.cos((14.479 * Math.PI) / 180);
+      const KY = 110574;
+      const toM = (lng, lat) => [lng * KX, lat * KY];
+      const toLL = (p) => L.latLng(p[1] / KY, p[0] / KX);
+
+      function projectOnSeg(p, a, b) {
+        const dx = b[0] - a[0],
+          dy = b[1] - a[1],
+          len2 = dx * dx + dy * dy;
+        const t = len2
+          ? Math.max(
+              0,
+              Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / len2),
+            )
+          : 0;
+        const q = [a[0] + t * dx, a[1] + t * dy];
+        return { t, d: Math.hypot(p[0] - q[0], p[1] - q[1]), p: q };
+      }
+
+      const gNodes = []; // [x, y] in metres
+      const gAdj = []; // gAdj[i] = [{ to, w }]
+      const gEdges = []; // [{ a, b, w }], one per walkable segment (used to snap GPS positions)
+      const gEdgeKeys = new Set();
+      let gComp = []; // connected-component id per node
+      let gMainComp = -1; // the largest component; only this one is ever used for routing
+
+      function nodeFor(p) {
+        for (let i = 0; i < gNodes.length; i++) {
+          if (Math.hypot(gNodes[i][0] - p[0], gNodes[i][1] - p[1]) < NODE_M)
+            return i;
+        }
+        gNodes.push(p);
+        gAdj.push([]);
+        return gNodes.length - 1;
+      }
+
+      function addEdge(a, b) {
+        if (a === b) return;
+        const key = a < b ? `${a}-${b}` : `${b}-${a}`;
+        if (gEdgeKeys.has(key)) return;
+        gEdgeKeys.add(key);
+        const w = Math.hypot(
+          gNodes[a][0] - gNodes[b][0],
+          gNodes[a][1] - gNodes[b][1],
+        );
+        gAdj[a].push({ to: b, w });
+        gAdj[b].push({ to: a, w });
+        gEdges.push({ a, b, w });
+      }
+
+      (function buildWalkGraph() {
+        const lines = geojsonData.features
+          .filter(
+            (f) => f.properties.walkway && f.geometry.type === "LineString",
+          )
+          .map((f) => f.geometry.coordinates.map((c) => toM(c[0], c[1])));
+
+        lines.forEach((pts, li) => {
+          let prev = null;
+          const visit = (p) => {
+            const id = nodeFor(p);
+            if (prev !== null) addEdge(prev, id);
+            prev = id;
+          };
+
+          visit(pts[0]);
+          for (let s = 0; s < pts.length - 1; s++) {
+            const a = pts[s],
+              b = pts[s + 1],
+              extra = [];
+            // A vertex of another line that sits on this segment is a junction
+            lines.forEach((other, lj) => {
+              if (lj === li) return;
+              other.forEach((v) => {
+                const { t, d } = projectOnSeg(v, a, b);
+                if (d < JUNCTION_M && t > 0.02 && t < 0.98)
+                  extra.push({ t, v });
+              });
+            });
+            extra.sort((x, y) => x.t - y.t).forEach((e) => visit(e.v));
+            visit(b);
+          }
+        });
+      })();
+
+      (function labelComponents() {
+        gComp = new Array(gNodes.length).fill(-1);
+        const sizes = [];
+        for (let s = 0; s < gNodes.length; s++) {
+          if (gComp[s] !== -1) continue;
+          const id = sizes.length;
+          let size = 0;
+          const stack = [s];
+          gComp[s] = id;
+          while (stack.length) {
+            const u = stack.pop();
+            size++;
+            gAdj[u].forEach(({ to }) => {
+              if (gComp[to] === -1) {
+                gComp[to] = id;
+                stack.push(to);
+              }
+            });
+          }
+          sizes.push(size);
+        }
+        gMainComp = sizes.indexOf(Math.max(...sizes));
+        if (sizes.length > 1) {
+          console.warn(
+            `Walkway network has ${sizes.length} separate pieces; only the largest is used.`,
+          );
+        }
+      })();
+
+      function nearestNode(latlng, maxM = ENTRANCE_SNAP_M) {
+        const p = toM(latlng.lng, latlng.lat);
+        let best = null;
+        for (let i = 0; i < gNodes.length; i++) {
+          if (gComp[i] !== gMainComp) continue;
+          const d = Math.hypot(gNodes[i][0] - p[0], gNodes[i][1] - p[1]);
+          if (d <= maxM && (!best || d < best.d)) best = { node: i, d };
+        }
+        return best;
+      }
+
+      function snapToNetwork(latlng, maxM) {
+        const p = toM(latlng.lng, latlng.lat);
+        let best = null;
+        for (const e of gEdges) {
+          if (gComp[e.a] !== gMainComp) continue;
+          const { t, d, p: q } = projectOnSeg(p, gNodes[e.a], gNodes[e.b]);
+          if (d <= maxM && (!best || d < best.d))
+            best = { edge: e, t, d, point: q };
+        }
+        return best;
+      }
+
+      /* A "source" is where a route can start, a "target" where it can end.
+           leg = metres from the real point to the walkway node, lead/tail = the polyline for that leg. */
+      function doorSource(latlng) {
+        const hit = nearestNode(latlng);
+        return hit ? { node: hit.node, leg: hit.d, lead: [latlng] } : null;
+      }
+
+      function doorTarget(latlng) {
+        const hit = nearestNode(latlng);
+        return hit ? { node: hit.node, leg: hit.d, tail: [latlng] } : null;
+      }
+
+      /* A GPS fix is snapped to the nearest point ALONG a walkway, so it can start mid-segment */
+      function gpsSources(latlng) {
+        const snap = snapToNetwork(latlng, MAX_OFF_NETWORK_M);
+        if (!snap) return null;
+        const { edge, t, d, point } = snap;
+        const lead = [latlng, toLL(point)];
+        return [
+          { node: edge.a, leg: d + t * edge.w, lead },
+          { node: edge.b, leg: d + (1 - t) * edge.w, lead },
+        ];
+      }
+
+      /* Multi-source Dijkstra: finds the best (source, target) pair in one pass */
+      function planRoute(sources, targets) {
+        const n = gNodes.length;
+        const dist = new Array(n).fill(Infinity);
+        const prev = new Array(n).fill(-1);
+        const root = new Array(n).fill(-1);
+        const done = new Array(n).fill(false);
+
+        sources.forEach((s, i) => {
+          if (s.leg < dist[s.node]) {
+            dist[s.node] = s.leg;
+            root[s.node] = i;
+          }
+        });
+
+        for (;;) {
+          let u = -1;
+          for (let i = 0; i < n; i++) {
+            if (
+              !done[i] &&
+              dist[i] < Infinity &&
+              (u === -1 || dist[i] < dist[u])
+            )
+              u = i;
+          }
+          if (u === -1) break;
+          done[u] = true;
+          for (const { to, w } of gAdj[u]) {
+            if (dist[u] + w < dist[to]) {
+              dist[to] = dist[u] + w;
+              prev[to] = u;
+              root[to] = root[u];
             }
+          }
+        }
+
+        let best = null;
+        targets.forEach((t) => {
+          const total = dist[t.node] + t.leg;
+          if (total < Infinity && (!best || total < best.total))
+            best = { t, total };
+        });
+        if (!best) return null;
+
+        const nodes = [];
+        for (let u = best.t.node; u !== -1; u = prev[u]) nodes.push(u);
+        nodes.reverse();
+        const src = sources[root[nodes[0]]];
+
+        return {
+          distance: best.total,
+          path: [
+            ...src.lead,
+            ...nodes.map((i) => toLL(gNodes[i])),
+            ...best.t.tail,
+          ],
+          start: src.lead[0],
+          end: best.t.tail[best.t.tail.length - 1],
+        };
+      }
+
+      /* origin is { source: 'qr' | 'manual', building, points } or { source: 'gps', latlng } */
+      function computeRoute(origin, target) {
+        let sources;
+        if (origin.source === "gps") {
+          sources = gpsSources(origin.latlng);
+          if (!sources) {
+            return {
+              error:
+                "You seem to be away from the campus walkways. Move closer, or scan the QR code at your building.",
+            };
+          }
+        } else {
+          sources = origin.points.map(doorSource).filter(Boolean);
+          if (!sources.length)
+            return {
+              error: `Can't find a walkway near ${origin.building.title}.`,
+            };
+        }
+
+        const targets = target.entrances.map(doorTarget).filter(Boolean);
+        if (!targets.length)
+          return { error: `Can't find a walkway near ${target.title}.` };
+
+        const route = planRoute(sources, targets);
+        return route
+          ? { route }
+          : { error: `No walkable path found to ${target.title}.` };
+      }
+
+      /* Route state & display */
+      const STYLE_HERE = {
+        color: "#f59e0b",
+        weight: 3,
+        fillColor: "#f59e0b",
+        fillOpacity: 0.45,
+      };
+      const STYLE_DEST = {
+        color: "#2563eb",
+        weight: 3,
+        fillColor: "#2563eb",
+        fillOpacity: 0.35,
+      };
+
+      const USER_ICON = L.divIcon({
+        className: "user-dot",
+        html: "<span></span>",
+        iconSize: [22, 22],
+        iconAnchor: [11, 11],
+      });
+      const HERE_ICON = L.divIcon({
+        className: "here-marker",
+        html: "<span></span>",
+        iconSize: [44, 44],
+        iconAnchor: [22, 22],
+      });
+      const END_ICON = L.divIcon({
+        className: "route-end-marker",
+        html: '<span><i class="fa-solid fa-flag-checkered" aria-hidden="true"></i></span>',
+        iconSize: [30, 30],
+        iconAnchor: [15, 15],
+      });
+
+      const hereChip = $("hereChip");
+      const hereChipIcon = $("hereChipIcon");
+      const hereChipText = $("hereChipText");
+      const clearOriginBtn = $("clearOriginBtn");
+      const appHeader = $("appHeader");
+      const tripCard = $("tripCard");
+      const tripFromBtn = $("tripFromBtn");
+      const tripFromText = $("tripFromText");
+      const tripToBtn = $("tripToBtn");
+      const tripToText = $("tripToText");
+      const tripTime = $("tripTime");
+      const tripDist = $("tripDist");
+      const routeAnnouncer = $("routeAnnouncer");
+      const startHereBtn = $("startHereBtn");
+      const toastEl = $("toast");
+
+      let pinnedOrigin = null; // set by a QR scan or "Start from here"; always wins over GPS
+      let hereMarker = null;
+      let routeLine = null;
+      let routeCasing = null;
+      let routeStartDot = null;
+      let routeEndMarker = null;
+      let routeTarget = null;
+      let routeState = null; // { target, originSource, from, distance }
+      let pendingTarget = null; // destination to route to as soon as a GPS fix arrives
+      let arrivedFor = null;
+      let toastTimer = null;
+
+      const gps = {
+        watchId: null,
+        fix: null,
+        recenter: false,
+        denied: false,
+        lastErrorAt: 0,
+        weakNotified: false,
+      };
+
+      function storeGet(key) {
+        try {
+          return sessionStorage.getItem(key);
+        } catch (e) {
+          return null;
+        }
+      }
+      function storeSet(key, value) {
+        try {
+          localStorage.setItem(key, value);
+        } catch (e) {}
+      }
+      function storeRemove(key) {
+        try {
+          localStorage.removeItem(key);
+        } catch (e) {}
+      }
+
+      function showToast(message) {
+        toastEl.textContent = message;
+        toastEl.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toastEl.classList.remove("show"), 4000);
+      }
+
+      function formatRoute(distance) {
+        return {
+          metres: Math.round(distance),
+          minutes: Math.max(1, Math.round(distance / WALK_SPEED_MS / 60)),
+        };
+      }
+
+      function gpsIsUsable() {
+        return !!(gps.fix && gps.fix.accuracy <= GPS_MAX_ACCURACY_M);
+      }
+
+      /* Where does a new route start? QR / "Start from here" first, otherwise a usable GPS fix. */
+      function getOrigin() {
+        if (pinnedOrigin) return pinnedOrigin;
+        if (gpsIsUsable())
+          return {
+            source: "gps",
+            latlng: gps.fix.latlng,
+            accuracy: gps.fix.accuracy,
+          };
+        return null;
+      }
+
+      function applyHighlights() {
+        campusBuildings.forEach((b) => geoLayer.resetStyle(b.layer));
+        if (pinnedOrigin) pinnedOrigin.building.layer.setStyle(STYLE_HERE);
+        if (routeTarget) routeTarget.layer.setStyle(STYLE_DEST);
+      }
+
+      function updateDestinationBtn() {
+        const b = activeBuildingData;
+        let icon = "fa-location-arrow",
+          label = "Go to Destination",
+          disabled = false;
+        if (b && pinnedOrigin && pinnedOrigin.building === b) {
+          icon = "fa-location-dot";
+          label = "You are here";
+          disabled = true;
+        } else if (b && routeTarget === b) {
+          icon = "fa-xmark";
+          label = "Clear route";
+        }
+        goToDestinationBtn.innerHTML = `<i class="fa-solid ${icon}" aria-hidden="true"></i> ${label}`;
+        goToDestinationBtn.disabled = disabled;
+      }
+
+      function updateStartHereBtn() {
+        const b = activeBuildingData;
+        startHereBtn.hidden =
+          !b || !!(pinnedOrigin && pinnedOrigin.building === b);
+      }
+
+      /* Time and distance badges only belong to the building the route leads to */
+      function updateSheetStats() {
+        const show = !!(routeState && activeBuildingData === routeState.target);
+        sheetTimeBadge.hidden = !show;
+        sheetDistanceBadge.hidden = !show;
+        if (show) {
+          const { metres, minutes } = formatRoute(routeState.distance);
+          sheetDistanceText.textContent = `${metres} m`;
+          sheetTimeText.textContent = `${minutes} min`;
+        }
+      }
+
+      function refreshPeek() {
+        if (currentSnapState === "peek") snapToState("peek");
+      }
+
+      function refreshSheetActions() {
+        updateDestinationBtn();
+        updateStartHereBtn();
+        updateSheetStats();
+        refreshPeek();
+      }
+
+      function updateHereChip() {
+        let text = "",
+          icon = "fa-location-dot",
+          label = "",
+          gpsMode = false;
+        if (pinnedOrigin) {
+          text = `You are at ${pinnedOrigin.building.title}`;
+          label = "Clear starting point";
+        } else if (gps.fix) {
+          gpsMode = true;
+          icon = "fa-location-crosshairs";
+          const acc = Math.round(gps.fix.accuracy);
+          text = gpsIsUsable()
+            ? `Using your location · ±${acc} m`
+            : `Weak GPS signal · ±${acc} m`;
+          label = "Turn off location";
+        } else if (gps.watchId !== null) {
+          gpsMode = true;
+          icon = "fa-location-crosshairs";
+          text = "Finding your location…";
+          label = "Turn off location";
+        }
+        hereChip.hidden = !text || !!routeState;
+        hereChip.classList.toggle("is-gps", gpsMode);
+        hereChipIcon.className = `fa-solid ${icon}`;
+        hereChipText.textContent = text;
+        clearOriginBtn.setAttribute("aria-label", label || "Clear");
+      }
+
+      /* The search bar turns into a compact trip card (from / to / time) while a route is showing */
+      function doorLabel(name) {
+        return String(name).replace(/^entrance\s*(\d+)$/i, "Entrance $1");
+      }
+
+      function fromLabel(origin) {
+        if (origin.source === "gps") return "Your location";
+        return origin.door
+          ? `${origin.building.title} · ${doorLabel(origin.door.name)}`
+          : origin.building.title;
+      }
+
+      function updateTripCard(origin, target, distance) {
+        const { metres, minutes } = formatRoute(distance);
+        tripFromText.textContent = fromLabel(origin);
+        tripToText.textContent = target.title;
+        tripTime.textContent =
+          distance <= ARRIVE_M ? "Arrived" : `${minutes} min`;
+        tripDist.textContent = `${metres} m`;
+        tripCard.dataset.origin = origin.source === "gps" ? "gps" : "pin";
+      }
+
+      function setTripMode(on) {
+        if (!on && tripCard.contains(document.activeElement)) {
+          (currentSnapState !== "closed" ? sheetTitle : menuToggle).focus({
+            preventScroll: true,
+          });
+        }
+        appHeader.dataset.mode = on ? "trip" : "search";
+        document.body.classList.toggle("trip-mode", on);
+        if (on) setDropdownOpen(false);
+      }
+
+      function removeRouteLayers() {
+        [routeLine, routeCasing, routeStartDot, routeEndMarker].forEach(
+          (layer) => {
+            if (layer) oc_map.removeLayer(layer);
+          },
+        );
+        routeLine = routeCasing = routeStartDot = routeEndMarker = null;
+      }
+
+      function clearRoute() {
+        removeRouteLayers();
+        routeTarget = null;
+        routeState = null;
+        pendingTarget = null;
+        arrivedFor = null;
+        setTripMode(false);
+        updateHereChip();
+        applyHighlights();
+        refreshSheetActions();
+      }
+
+      function fitRoute() {
+        if (!routeLine) return;
+        const bottom =
+          currentSnapState === "closed" ? 40 : getPeekHeight() + 40;
+        const cardHeight =
+          parseFloat(
+            getComputedStyle(document.documentElement).getPropertyValue(
+              "--trip-height",
+            ),
+          ) || 104;
+        const top =
+          (parseFloat(getComputedStyle(appHeader).top) || 12) + cardHeight + 16;
+        oc_map.fitBounds(routeLine.getBounds(), {
+          paddingTopLeft: [40, top],
+          paddingBottomRight: [40, bottom],
+          maxZoom: 20,
+        });
+      }
+
+      function drawRoute(route, origin, target, fit) {
+        removeRouteLayers();
+        routeCasing = L.polyline(route.path, {
+          color: "#ffffff",
+          weight: 10,
+          opacity: 0.9,
+          lineCap: "round",
+          lineJoin: "round",
+          interactive: false,
+        }).addTo(oc_map);
+        routeLine = L.polyline(route.path, {
+          color: "#0B793D",
+          weight: 6,
+          opacity: 1,
+          lineCap: "round",
+          lineJoin: "round",
+          interactive: false,
+        }).addTo(oc_map);
+        if (origin.source !== "gps") {
+          routeStartDot = L.circleMarker(route.start, {
+            radius: 6,
+            color: "#0B793D",
+            weight: 3,
+            fillColor: "#ffffff",
+            fillOpacity: 1,
+            interactive: false,
+          }).addTo(oc_map);
+        }
+        routeEndMarker = L.marker(route.end, {
+          icon: END_ICON,
+          interactive: false,
+          keyboard: false,
         }).addTo(oc_map);
 
-        // Sort Campus Buildings Alphabetically
-        campusBuildings.sort((a, b) => a.title.localeCompare(b.title));
+        routeTarget = target;
+        routeState = {
+          target,
+          originSource: origin.source,
+          from: origin.source === "gps" ? origin.latlng : null,
+          distance: route.distance,
+        };
 
-        // --- Toggle Building Labels On and Off ---
-        const toggleLabelsBtn = document.getElementById('toggleLabelsBtn');
+        updateTripCard(origin, target, route.distance);
+        setTripMode(true);
+        updateHereChip();
 
-        toggleLabelsBtn.addEventListener('click', () => {
-            labelsVisible = !labelsVisible;
-            toggleLabelsBtn.classList.toggle('active', labelsVisible);
+        applyHighlights();
+        refreshSheetActions();
+        if (fit) {
+          const { metres, minutes } = formatRoute(route.distance);
+          routeAnnouncer.textContent = `Route to ${target.title}: ${metres} metres, about ${minutes} minute${minutes === 1 ? "" : "s"} on foot.`;
+          fitRoute();
+        }
+      }
 
-            document.querySelectorAll('.map-label-text').forEach(labelEl => {
-                if (labelsVisible) {
-                    labelEl.classList.remove('hide-label');
-                } else {
-                    labelEl.classList.add('hide-label');
-                }
+      function checkArrival(route, target) {
+        if (route.distance <= ARRIVE_M && arrivedFor !== target) {
+          arrivedFor = target;
+          showToast(`You have arrived at ${target.title}.`);
+        }
+      }
+
+      /* Why there is no starting point yet, and what to do about it */
+      function needOrigin(target) {
+        gps.weakNotified = false;
+        if (gps.watchId === null && !gps.denied && locationSupported(true)) {
+          pendingTarget = target;
+          showToast("Finding your location…");
+          startLocation({ recenter: false });
+        } else if (gps.watchId !== null && !gps.fix) {
+          pendingTarget = target;
+          showToast("Still finding your location…");
+        } else if (gps.fix) {
+          pendingTarget = target;
+          showToast(
+            `GPS signal is weak (±${Math.round(gps.fix.accuracy)} m). Waiting for a better fix, or scan a QR code / tap “Start from here”.`,
+          );
+        } else {
+          showToast(
+            "Scan a QR code, or tap “Start from here” on your building, to get directions.",
+          );
+        }
+        return false;
+      }
+
+      function routeTo(target) {
+        const origin = getOrigin();
+        if (!origin) return needOrigin(target);
+        if (origin.building === target) {
+          showToast("You are already here.");
+          return false;
+        }
+
+        const result = computeRoute(origin, target);
+        if (result.error) {
+          showToast(result.error);
+          return false;
+        }
+
+        arrivedFor = null;
+        drawRoute(result.route, origin, target, true);
+        checkArrival(result.route, target);
+        return true;
+      }
+
+      goToDestinationBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const target = activeBuildingData;
+        if (!target) return;
+        if (routeTarget === target) {
+          clearRoute();
+          return;
+        }
+        routeTo(target);
+      });
+
+      $("tripBackBtn").addEventListener("click", clearRoute);
+
+      /* Tap the destination row to bring its details back; tap the start row to look at where you start */
+      tripToBtn.addEventListener("click", () => {
+        if (!routeTarget) return;
+        if (routeTarget.coords)
+          oc_map.flyTo([routeTarget.coords.lat, routeTarget.coords.lng], 19, {
+            animate: true,
+            duration: 1,
+          });
+        openBottomSheet(routeTarget);
+      });
+
+      tripFromBtn.addEventListener("click", () => {
+        if (!routeState) return;
+        const at =
+          routeState.originSource === "gps"
+            ? gps.fix && gps.fix.latlng
+            : pinnedOrigin &&
+              (pinnedOrigin.door
+                ? pinnedOrigin.door.latlng
+                : pinnedOrigin.building.coords);
+        if (at)
+          oc_map.flyTo([at.lat, at.lng], 19, { animate: true, duration: 1 });
+      });
+
+      /* ==========================================================
+           Starting point from a QR code or "Start from here" (location off)
+           ========================================================== */
+      function normalizeKey(value) {
+        return String(value || "")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "");
+      }
+
+      function findBuilding(raw) {
+        const wanted = normalizeKey(raw);
+        if (!wanted) return null;
+        return (
+          campusBuildings.find(
+            (b) =>
+              normalizeKey(b.title) === wanted || normalizeKey(b.id) === wanted,
+          ) || null
+        );
+      }
+
+      /* "2", "entrance2" and "Entrance 2" all mean the second door */
+      function findDoorIndex(building, raw) {
+        if (!raw) return -1;
+        const key = normalizeKey(raw);
+        const byName = building.doors.findIndex(
+          (d) => normalizeKey(d.name) === key,
+        );
+        if (byName >= 0) return byName;
+        const n = parseInt(key.replace(/^entrance/, ""), 10);
+        return Number.isInteger(n) && n >= 1 && n <= building.doors.length
+          ? n - 1
+          : -1;
+      }
+
+      function setPinnedOrigin(
+        building,
+        { source = "manual", doorIndex = -1, fly = true } = {},
+      ) {
+        clearRoute();
+        pendingTarget = null;
+
+        const door = doorIndex >= 0 ? building.doors[doorIndex] : null;
+        pinnedOrigin = {
+          source,
+          building,
+          door,
+          points: door ? [door.latlng] : building.entrances,
+        };
+
+        if (hereMarker) oc_map.removeLayer(hereMarker);
+        hereMarker = null;
+        const at = door ? door.latlng : building.coords;
+        if (at) {
+          hereMarker = L.marker(at, {
+            interactive: false,
+            keyboard: false,
+            zIndexOffset: -1000,
+            icon: HERE_ICON,
+          }).addTo(oc_map);
+          if (fly)
+            oc_map.flyTo([at.lat, at.lng], 19, {
+              animate: true,
+              duration: 1.2,
             });
-        });
-
-        // --- Google Maps Style Inline Search Dropdown Logic ---
-        const searchInput = document.getElementById('searchInput');
-        const searchBtn = document.getElementById('searchBtn');
-        const searchIcon = document.getElementById('searchIcon');
-        const searchDropdown = document.getElementById('searchDropdown');
-        const buildingsList = document.getElementById('buildingsList');
-
-        function renderBuildingsDropdown(filterText = '') {
-            buildingsList.innerHTML = '';
-            const filtered = campusBuildings.filter(b => b.title.toLowerCase().includes(filterText.toLowerCase()));
-
-            if (filtered.length === 0) {
-                buildingsList.innerHTML = `<li class="no-building-found">No building matching "${filterText}"</li>`;
-                return;
-            }
-
-            filtered.forEach(building => {
-                const li = document.createElement('li');
-                li.className = 'building-item';
-                li.innerHTML = `<i class="fa-solid fa-building"></i> <span>${building.title}</span>`;
-                li.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    selectBuilding(building);
-                });
-                buildingsList.appendChild(li);
-            });
         }
 
-        function selectBuilding(building) {
-            searchDropdown.classList.remove('active');
-            searchInput.value = building.title;
-            updateSearchIconState();
+        storeSet(
+          ORIGIN_KEY,
+          JSON.stringify({
+            key: building.id || building.title,
+            door: door ? door.name : null,
+            source,
+          }),
+        );
+        updateHereChip();
+        applyHighlights();
+        refreshSheetActions();
+      }
 
-            if (building.coords) {
-                oc_map.flyTo([building.coords.lat, building.coords.lng], 19, { animate: true, duration: 1.2 });
-            }
-            openBottomSheet(building);
-        }
-
-        function updateSearchIconState() {
-            if (searchInput.value.trim().length > 0) {
-                searchIcon.className = 'fa-solid fa-xmark';
-                searchBtn.setAttribute('aria-label', 'Clear search');
-            } else {
-                searchIcon.className = 'fa-solid fa-magnifying-glass';
-                searchBtn.setAttribute('aria-label', 'Search');
-            }
-        }
-
-        searchInput.addEventListener('focus', () => {
-            renderBuildingsDropdown(searchInput.value.trim());
-            searchDropdown.classList.add('active');
-        });
-
-        searchInput.addEventListener('input', () => {
-            updateSearchIconState();
-            renderBuildingsDropdown(searchInput.value.trim());
-            searchDropdown.classList.add('active');
-        });
-
-        searchBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (searchInput.value.trim().length > 0) {
-                searchInput.value = '';
-                updateSearchIconState();
-                renderBuildingsDropdown('');
-                searchDropdown.classList.add('active');
-                searchInput.focus();
-            } else {
-                if (searchDropdown.classList.contains('active')) {
-                    searchDropdown.classList.remove('active');
-                } else {
-                    renderBuildingsDropdown('');
-                    searchDropdown.classList.add('active');
-                    searchInput.focus();
-                }
-            }
-        });
-
-        // Close dropdown when clicking outside header search bar
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.app-header')) {
-                searchDropdown.classList.remove('active');
-            }
-        });
-
-        // --- Inverted Polygon Mask Overlay (Dimming Outside Area) ---
-        let maskPolygon = null;
-        const perimeterFeature = geojsonData.features.find(f => f.properties && f.properties.perimeter);
-
-        if (perimeterFeature) {
-            const perimeterLatLngs = perimeterFeature.geometry.coordinates.map(coord => [coord[1], coord[0]]);
-
-            const worldOuterBounds = [
-                [90, -180],
-                [90, 180],
-                [-90, 180],
-                [-90, -180]
-            ];
-
-            maskPolygon = L.polygon([worldOuterBounds, perimeterLatLngs], {
-                color: 'transparent',
-                fillColor: '#111827',
-                fillOpacity: 0.45,
-                interactive: false
-            }).addTo(oc_map);
-        }
-
-        // Drawer Menu Toggle
-        const menuToggle = document.getElementById('menuToggle');
-        const closeDrawer = document.getElementById('closeDrawer');
-        const sideDrawer = document.getElementById('sideDrawer');
-        const navOverlay = document.getElementById('navOverlay');
-
-        function openMenu() {
-            sideDrawer.classList.add('active');
-            navOverlay.classList.add('active');
-        }
-
-        function closeMenu() {
-            sideDrawer.classList.remove('active');
-            navOverlay.classList.remove('active');
-        }
-
-        menuToggle.addEventListener('click', openMenu);
-        closeDrawer.addEventListener('click', closeMenu);
-        navOverlay.addEventListener('click', closeMenu);
-
-        // Modal Controls
-        const feedbackLink = document.getElementById('feedbackLink');
-        const feedbackModal = document.getElementById('feedbackModal');
-        const closeFeedbackBtn = document.getElementById('closeFeedbackBtn');
-        const sendFeedbackBtn = document.getElementById('sendFeedbackBtn');
-        const feedbackForm = document.getElementById('feedbackForm');
-        const successModal = document.getElementById('successModal');
-        const closeSuccessBtn = document.getElementById('closeSuccessBtn');
-
-        feedbackLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            closeMenu();
-            feedbackModal.classList.add('active');
-        });
-
-        closeFeedbackBtn.addEventListener('click', () => {
-            feedbackModal.classList.remove('active');
-        });
-
-        // EmailJS Submission
-        feedbackForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-
-            sendFeedbackBtn.disabled = true;
-            sendFeedbackBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Sending...`;
-
-            const email = document.getElementById('userEmail').value;
-            const subject = document.getElementById('feedbackSubject').value;
-            const message = document.getElementById('feedbackMessage').value;
-
-            const templateParams = {
-                name: email,
-                email: email,
-                subject: subject,
-                message: message
-            };
-
-            emailjs.send('service_wdyvki8', 'template_86k881g', templateParams)
-                .then(function(response) {
-                    feedbackModal.classList.remove('active');
-                    successModal.classList.add('active');
-                    feedbackForm.reset();
-                }, function(error) {
-                    console.error('FAILED...', error);
-                    alert('Failed to send feedback automatically. Opening email client instead...');
-                    const recipientEmail = "dwightjustin.reyes@olivarezcollege.edu.ph";
-                    window.location.href = `mailto:${recipientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent("From: " + email + "\n\n" + message)}`;
-                    feedbackModal.classList.remove('active');
-                })
-                .finally(function() {
-                    sendFeedbackBtn.disabled = false;
-                    sendFeedbackBtn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Send Feedback`;
-                });
-        });
-
-        closeSuccessBtn.addEventListener('click', () => {
-            successModal.classList.remove('active');
-        });
-
-        // Light / Dark Theme Logic
-        const themeToggleBtn = document.getElementById('themeToggleBtn');
-        const themeIcon = document.getElementById('themeIcon');
-        const themeLabel = document.getElementById('themeLabel');
-        let isDarkMode = false;
-
-        themeToggleBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            isDarkMode = !isDarkMode;
-
-            if (isDarkMode) {
-                oc_map.removeLayer(currentTileLayer);
-                dark_map.addTo(oc_map);
-                currentTileLayer = dark_map;
-                
-                document.body.classList.add('dark-theme');
-                themeIcon.className = 'fa-solid fa-sun';
-                themeLabel.textContent = 'Light Mode';
-
-                if (maskPolygon) {
-                    maskPolygon.setStyle({ fillColor: '#000000', fillOpacity: 0.65 });
-                }
-            } else {
-                oc_map.removeLayer(currentTileLayer);
-                light_map.addTo(oc_map);
-                currentTileLayer = light_map;
-
-                document.body.classList.remove('dark-theme');
-                themeIcon.className = 'fa-solid fa-moon';
-                themeLabel.textContent = 'Dark Mode';
-
-                if (maskPolygon) {
-                    maskPolygon.setStyle({ fillColor: '#111827', fillOpacity: 0.45 });
-                }
-            }
-            closeMenu();
-        });
-
-        // Geolocation Logic
-        function locateUser() {
-            if (!('geolocation' in navigator)) {
-                alert("Geolocation is not supported by your browser.");
-                return;
-            }
-
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-                    const accuracy = position.coords.accuracy;
-
-                    if (userMarker) oc_map.removeLayer(userMarker);
-                    if (accuracyCircle) oc_map.removeLayer(accuracyCircle);
-
-                    accuracyCircle = L.circle([lat, lng], {
-                        radius: accuracy,
-                        color: '#0B793D',
-                        fillColor: '#0B793D',
-                        fillOpacity: 0.15
-                    }).addTo(oc_map);
-
-                    userMarker = L.marker([lat, lng]).addTo(oc_map)
-                        .bindPopup("You are here!")
-                        .openPopup();
-
-                    oc_map.flyTo([lat, lng], 18, { animate: true, duration: 1.5 });
-                },
-                (error) => {
-                    console.warn("Geolocation Error:", error);
-                    if (error.code === error.POSITION_UNAVAILABLE) {
-                        alert("Device location is turned off. Please turn on Location/GPS.");
-                    } else if (error.code === error.PERMISSION_DENIED) {
-                        alert("Location access was denied in your browser settings.");
-                    } else {
-                        alert("Unable to acquire location signal.");
-                    }
-                },
-                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      function stripOriginFromUrl() {
+        try {
+          if (window.location.search) {
+            history.replaceState(
+              null,
+              "",
+              window.location.pathname + window.location.hash,
             );
+          }
+        } catch (e) {}
+      }
+
+      function clearPinnedOrigin() {
+        pinnedOrigin = null;
+        if (hereMarker) oc_map.removeLayer(hereMarker);
+        hereMarker = null;
+        storeRemove(ORIGIN_KEY);
+        stripOriginFromUrl();
+        clearRoute();
+        updateHereChip();
+        applyHighlights();
+        refreshSheetActions();
+      }
+
+      clearOriginBtn.addEventListener("click", () => {
+        if (pinnedOrigin) clearPinnedOrigin();
+        else stopLocation();
+      });
+
+      startHereBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const b = activeBuildingData;
+        if (!b) return;
+        setPinnedOrigin(b, { source: "manual", fly: false });
+        showToast(
+          `Starting point set to ${b.title}. Now pick where you want to go.`,
+        );
+      });
+
+      /* ==========================================================
+           Live location (location on)
+           ========================================================== */
+      function locationSupported(announce) {
+        if (!("geolocation" in navigator)) {
+          if (announce) showToast("This browser does not support location.");
+          return false;
+        }
+        if (window.isSecureContext === false) {
+          if (announce)
+            showToast("Location only works on a secure (https) page.");
+          return false;
+        }
+        return true;
+      }
+
+      function drawUserMarker() {
+        const { latlng, accuracy } = gps.fix;
+        const radius = Math.min(accuracy, 150);
+        if (!userMarker) {
+          userMarker = L.marker(latlng, {
+            icon: USER_ICON,
+            interactive: false,
+            keyboard: false,
+            zIndexOffset: 900,
+          }).addTo(oc_map);
+          accuracyCircle = L.circle(latlng, {
+            radius,
+            color: "#2563eb",
+            weight: 1,
+            fillColor: "#2563eb",
+            fillOpacity: 0.12,
+            interactive: false,
+          }).addTo(oc_map);
+        } else {
+          userMarker.setLatLng(latlng);
+          accuracyCircle.setLatLng(latlng);
+          accuracyCircle.setRadius(radius);
+        }
+      }
+
+      function removeUserMarker() {
+        if (userMarker) oc_map.removeLayer(userMarker);
+        if (accuracyCircle) oc_map.removeLayer(accuracyCircle);
+        userMarker = accuracyCircle = null;
+      }
+
+      /* Keep an active GPS route in step with the walker */
+      function maybeReroute() {
+        if (!routeState || routeState.originSource !== "gps" || pinnedOrigin)
+          return;
+        const origin = getOrigin();
+        if (!origin || origin.source !== "gps") return;
+        if (
+          routeState.from &&
+          routeState.from.distanceTo(origin.latlng) < ROUTE_REFRESH_M
+        )
+          return;
+
+        const target = routeState.target;
+        const result = computeRoute(origin, target);
+        if (result.error) return;
+        drawRoute(result.route, origin, target, false);
+        checkArrival(result.route, target);
+      }
+
+      function onGpsFix(position) {
+        const c = position.coords;
+        gps.fix = {
+          latlng: L.latLng(c.latitude, c.longitude),
+          accuracy: c.accuracy || 9999,
+          time: Date.now(),
+        };
+        drawUserMarker();
+
+        if (gps.recenter) {
+          gps.recenter = false;
+          oc_map.flyTo(gps.fix.latlng, Math.max(oc_map.getZoom(), 18), {
+            animate: true,
+            duration: 1.2,
+          });
         }
 
-        document.getElementById('myLocationBtn').addEventListener('click', locateUser);
+        updateHereChip();
 
-        // About & Attributions Modals
-        const infoModal = document.getElementById('infoModal');
-        const infoModalTitle = document.getElementById('infoModalTitle');
-        const infoModalBody = document.getElementById('infoModalBody');
-        const closeInfoBtn = document.getElementById('closeInfoBtn');
+        if (pendingTarget && gpsIsUsable() && !pinnedOrigin) {
+          const target = pendingTarget;
+          pendingTarget = null;
+          routeTo(target);
+        } else if (
+          pendingTarget &&
+          !pinnedOrigin &&
+          !gpsIsUsable() &&
+          !gps.weakNotified
+        ) {
+          gps.weakNotified = true;
+          showToast(
+            `GPS signal is weak (±${Math.round(gps.fix.accuracy)} m). Waiting for a better fix, or scan a QR code / tap “Start from here”.`,
+          );
+        } else {
+          maybeReroute();
+        }
+      }
 
-        document.getElementById('aboutLink').addEventListener('click', (e) => {
-            e.preventDefault();
-            closeMenu();
-            infoModalTitle.innerHTML = `<i class="fa-solid fa-circle-info"></i> About Us / Contact Us`;
-            infoModalBody.innerHTML = `
-                <p style="margin-bottom:10px;"><strong>OCNP Mobile Navigation</strong></p>
-                <p style="margin-bottom:10px;">Providing accurate interactive location mapping and mobile map interfaces.</p>
-                <p><strong>Contact:</strong> <br><a href="mailto:dwightjustin.reyes@olivarezcollege.edu.ph" class="break-email">dwightjustin.reyes@olivarezcollege.edu.ph</a></p>
-            `;
-            infoModal.classList.add('active');
+      function onGpsError(error) {
+        if (error.code === error.PERMISSION_DENIED) {
+          gps.denied = true;
+          stopLocation({ remember: false });
+          showToast(
+            "Location is blocked for this site. Allow it in your browser settings, or scan a QR code instead.",
+          );
+          return;
+        }
+        const now = Date.now();
+        if (now - gps.lastErrorAt < 15000) return;
+        gps.lastErrorAt = now;
+        showToast(
+          error.code === error.POSITION_UNAVAILABLE
+            ? "No location signal. Turn on Location / GPS on your device."
+            : "Still looking for your location…",
+        );
+      }
+
+      function startLocation({ recenter = false } = {}) {
+        if (!locationSupported(true) || gps.watchId !== null) return;
+        gps.denied = false;
+        gps.recenter = recenter;
+        storeRemove(GPS_OFF_KEY);
+        gps.watchId = navigator.geolocation.watchPosition(
+          onGpsFix,
+          onGpsError,
+          {
+            enableHighAccuracy: true,
+            maximumAge: 3000,
+            timeout: 20000,
+          },
+        );
+        updateHereChip();
+      }
+
+      function stopLocation({ remember = true } = {}) {
+        if (gps.watchId !== null) navigator.geolocation.clearWatch(gps.watchId);
+        gps.watchId = null;
+        gps.fix = null;
+        gps.recenter = false;
+        pendingTarget = null;
+        removeUserMarker();
+        if (routeState && routeState.originSource === "gps") clearRoute();
+        if (remember) storeSet(GPS_OFF_KEY, "1");
+        updateHereChip();
+      }
+
+      $("myLocationBtn").addEventListener("click", () => {
+        if (gps.watchId === null) {
+          startLocation({ recenter: true });
+          return;
+        }
+        if (!gps.fix) {
+          showToast("Still finding your location…");
+          return;
+        }
+        oc_map.flyTo(gps.fix.latlng, Math.max(oc_map.getZoom(), 18), {
+          animate: true,
+          duration: 1,
         });
+        if (pinnedOrigin) {
+          showToast(
+            `Directions start from ${pinnedOrigin.building.title}. Tap × on the chip to use your location instead.`,
+          );
+        }
+      });
 
-        document.getElementById('attributionsLink').addEventListener('click', (e) => {
-            e.preventDefault();
-            closeMenu();
-            infoModalTitle.innerHTML = `<i class="fa-solid fa-users"></i> Attributions`;
-            infoModalBody.innerHTML = `
+      /* If the browser already allows location, start without asking again */
+      function autoStartLocation() {
+        if (storeGet(GPS_OFF_KEY) === "1" || !locationSupported(false)) return;
+        if (!navigator.permissions || !navigator.permissions.query) return;
+        navigator.permissions
+          .query({ name: "geolocation" })
+          .then((status) => {
+            if (status.state === "granted") startLocation({ recenter: false });
+          })
+          .catch(() => {});
+      }
+
+      /* ==========================================================
+           Start-up: QR code in the URL, or the starting point from earlier in this tab
+           ========================================================== */
+      function initRouting() {
+        const params = new URLSearchParams(window.location.search);
+        const raw =
+          params.get("from") ||
+          params.get("start") ||
+          params.get("here") ||
+          params.get("destination");
+
+        let wanted = null;
+        if (raw) {
+          wanted = {
+            key: raw,
+            door: params.get("entrance") || params.get("door"),
+            source: "qr",
+            fromUrl: true,
+          };
+        } else {
+          try {
+            const saved = JSON.parse(storeGet(ORIGIN_KEY) || "null");
+            if (saved && saved.key)
+              wanted = {
+                key: saved.key,
+                door: saved.door,
+                source: saved.source || "manual",
+                fromUrl: false,
+              };
+          } catch (e) {}
+        }
+
+        if (wanted) {
+          const building = findBuilding(wanted.key);
+          if (building) {
+            setPinnedOrigin(building, {
+              source: wanted.source,
+              doorIndex: findDoorIndex(building, wanted.door),
+              fly: true,
+            });
+          } else if (wanted.fromUrl) {
+            showToast(`Could not find “${wanted.key}” on the map.`);
+          }
+        }
+
+        autoStartLocation();
+      }
+
+      /* Toggle Labels */
+      const toggleLabelsBtn = $("toggleLabelsBtn");
+
+      toggleLabelsBtn.addEventListener("click", () => {
+        labelsVisible = !labelsVisible;
+        toggleLabelsBtn.classList.toggle("active", labelsVisible);
+        toggleLabelsBtn.setAttribute("aria-pressed", String(labelsVisible));
+
+        document.querySelectorAll(".map-label-text").forEach((labelEl) => {
+          labelEl.classList.toggle("hide-label", !labelsVisible);
+        });
+      });
+
+      /* Search Combobox */
+      let visibleBuildings = [];
+      let activeIndex = -1;
+
+      function setDropdownOpen(open) {
+        searchDropdown.classList.toggle("active", open);
+        searchInput.setAttribute("aria-expanded", String(open));
+        if (!open) setActiveOption(-1);
+      }
+
+      function setActiveOption(index) {
+        const options = buildingsList.querySelectorAll(".building-item");
+        options.forEach((el) => el.classList.remove("is-active"));
+        activeIndex = index;
+
+        if (index >= 0 && options[index]) {
+          options[index].classList.add("is-active");
+          searchInput.setAttribute("aria-activedescendant", options[index].id);
+          options[index].scrollIntoView({ block: "nearest" });
+        } else {
+          searchInput.removeAttribute("aria-activedescendant");
+        }
+      }
+
+      function renderBuildingsDropdown(filterText = "") {
+        buildingsList.replaceChildren();
+        activeIndex = -1;
+        searchInput.removeAttribute("aria-activedescendant");
+
+        const query = filterText.toLowerCase();
+        visibleBuildings = campusBuildings.filter((b) =>
+          b.title.toLowerCase().includes(query),
+        );
+
+        if (visibleBuildings.length === 0) {
+          const li = document.createElement("li");
+          li.className = "no-building-found";
+          li.setAttribute("role", "option");
+          li.setAttribute("aria-disabled", "true");
+          li.textContent = `No building matching "${filterText}"`;
+          buildingsList.appendChild(li);
+          return;
+        }
+
+        visibleBuildings.forEach((building, i) => {
+          const li = document.createElement("li");
+          li.className = "building-item";
+          li.id = `building-option-${i}`;
+          li.setAttribute("role", "option");
+
+          const { iconClass, iconColor } = getBuildingIconInfo(building.title);
+
+          const iconWrapper = document.createElement("div");
+          iconWrapper.className = "map-label-icon";
+          iconWrapper.style.color = iconColor;
+
+          const icon = document.createElement("i");
+          icon.className = iconClass;
+          icon.setAttribute("aria-hidden", "true");
+          iconWrapper.appendChild(icon);
+
+          const label = document.createElement("span");
+          label.textContent = building.title;
+
+          li.append(iconWrapper, label);
+          li.addEventListener("click", (e) => {
+            e.stopPropagation();
+            selectBuilding(building);
+          });
+          buildingsList.appendChild(li);
+        });
+      }
+
+      function selectBuilding(building) {
+        setDropdownOpen(false);
+        searchInput.value = building.title;
+        updateSearchIconState();
+
+        if (building.coords) {
+          oc_map.flyTo([building.coords.lat, building.coords.lng], 19, {
+            animate: true,
+            duration: 1.2,
+          });
+        }
+        openBottomSheet(building);
+      }
+
+      function updateSearchIconState() {
+        if (searchInput.value.trim().length > 0) {
+          searchIcon.className = "fa-solid fa-xmark";
+          searchBtn.setAttribute("aria-label", "Clear search");
+        } else {
+          searchIcon.className = "fa-solid fa-magnifying-glass";
+          searchBtn.setAttribute("aria-label", "Search");
+        }
+      }
+
+      function openDropdown() {
+        renderBuildingsDropdown(searchInput.value.trim());
+        setDropdownOpen(true);
+      }
+
+      searchInput.addEventListener("focus", openDropdown);
+
+      searchInput.addEventListener("input", () => {
+        updateSearchIconState();
+        openDropdown();
+      });
+
+      searchInput.addEventListener("keydown", (e) => {
+        const isOpen = searchDropdown.classList.contains("active");
+
+        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+          e.preventDefault();
+          if (!isOpen) openDropdown();
+          if (!visibleBuildings.length) return;
+          const step = e.key === "ArrowDown" ? 1 : -1;
+          setActiveOption(
+            (activeIndex + step + visibleBuildings.length) %
+              visibleBuildings.length,
+          );
+        } else if (e.key === "Enter") {
+          if (!isOpen || !visibleBuildings.length) return;
+          e.preventDefault();
+          if (activeIndex >= 0) {
+            selectBuilding(visibleBuildings[activeIndex]);
+          } else if (searchInput.value.trim()) {
+            selectBuilding(visibleBuildings[0]);
+          }
+        } else if (e.key === "Escape" && isOpen) {
+          e.stopPropagation();
+          setDropdownOpen(false);
+        }
+      });
+
+      searchBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (searchInput.value.trim().length > 0) {
+          searchInput.value = "";
+          updateSearchIconState();
+          openDropdown();
+          searchInput.focus();
+        } else if (searchDropdown.classList.contains("active")) {
+          setDropdownOpen(false);
+        } else {
+          openDropdown();
+          searchInput.focus();
+        }
+      });
+
+      document.addEventListener("click", (e) => {
+        if (!e.target.closest(".app-header")) {
+          setDropdownOpen(false);
+        }
+      });
+
+      /* Perimeter Mask */
+      function getMaskStyle(dark) {
+        return dark
+          ? { fillColor: "#000000", fillOpacity: 0.65 }
+          : { fillColor: "#111827", fillOpacity: 0.45 };
+      }
+
+      let maskPolygon = null;
+      const perimeterFeature = geojsonData.features.find(
+        (f) => f.properties && f.properties.perimeter,
+      );
+
+      if (perimeterFeature) {
+        const perimeterLatLngs = perimeterFeature.geometry.coordinates.map(
+          (coord) => [coord[1], coord[0]],
+        );
+
+        const worldOuterBounds = [
+          [90, -180],
+          [90, 180],
+          [-90, 180],
+          [-90, -180],
+        ];
+
+        maskPolygon = L.polygon([worldOuterBounds, perimeterLatLngs], {
+          color: "transparent",
+          interactive: false,
+          ...getMaskStyle(isDarkMode),
+        }).addTo(oc_map);
+      }
+
+      /* Drawer Menu */
+      function openMenu() {
+        sideDrawer.classList.add("active");
+        navOverlay.classList.add("active");
+        menuToggle.setAttribute("aria-expanded", "true");
+        closeDrawer.focus();
+      }
+
+      function closeMenu(restoreFocus = true) {
+        const hadFocusInside = sideDrawer.contains(document.activeElement);
+        sideDrawer.classList.remove("active");
+        navOverlay.classList.remove("active");
+        menuToggle.setAttribute("aria-expanded", "false");
+        if (restoreFocus && hadFocusInside) menuToggle.focus();
+      }
+
+      menuToggle.addEventListener("click", openMenu);
+      closeDrawer.addEventListener("click", () => closeMenu());
+      navOverlay.addEventListener("click", () => closeMenu());
+
+      /* Feedback Form */
+      const feedbackForm = $("feedbackForm");
+      const sendFeedbackBtn = $("sendFeedbackBtn");
+      const SEND_LABEL =
+        '<i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Send Feedback';
+
+      $("feedbackLink").addEventListener("click", () => {
+        openModal(feedbackModal, $("userEmail"));
+        closeMenu(false);
+      });
+
+      $("closeFeedbackBtn").addEventListener("click", () =>
+        closeModal(feedbackModal),
+      );
+
+      feedbackForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+
+        sendFeedbackBtn.disabled = true;
+        sendFeedbackBtn.innerHTML =
+          '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Sending...';
+
+        const email = $("userEmail").value;
+        const subject = $("feedbackSubject").value;
+        const message = $("feedbackMessage").value;
+
+        const templateParams = {
+          name: email,
+          email: email,
+          subject: subject,
+          message: message,
+        };
+
+        const request = window.emailjs
+          ? emailjs.send(
+              EMAIL_CONFIG.serviceId,
+              EMAIL_CONFIG.templateId,
+              templateParams,
+            )
+          : Promise.reject(new Error("EmailJS is unavailable"));
+
+        request
+          .then(
+            () => {
+              closeModal(feedbackModal);
+              openModal(successModal, $("closeSuccessBtn"));
+              feedbackForm.reset();
+            },
+            (error) => {
+              console.error("FAILED...", error);
+              alert(
+                "Failed to send feedback automatically. Opening email client instead...",
+              );
+              closeModal(feedbackModal);
+              window.location.href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent("From: " + email + "\n\n" + message)}`;
+            },
+          )
+          .finally(() => {
+            sendFeedbackBtn.disabled = false;
+            sendFeedbackBtn.innerHTML = SEND_LABEL;
+          });
+      });
+
+      $("closeSuccessBtn").addEventListener("click", () =>
+        closeModal(successModal),
+      );
+
+      /* Theme Toggle */
+      const themeToggleBtn = $("themeToggleBtn");
+      const themeIcon = $("themeIcon");
+      const themeLabel = $("themeLabel");
+
+      function updateThemeUi() {
+        themeIcon.className = isDarkMode
+          ? "fa-solid fa-sun"
+          : "fa-solid fa-moon";
+        themeLabel.textContent = isDarkMode ? "Light Mode" : "Dark Mode";
+      }
+
+      themeToggleBtn.addEventListener("click", () => {
+        isDarkMode = !isDarkMode;
+
+        oc_map.removeLayer(currentTileLayer);
+        currentTileLayer = isDarkMode ? dark_map : light_map;
+        currentTileLayer.addTo(oc_map);
+
+        document.body.classList.toggle("dark-theme", isDarkMode);
+        if (maskPolygon) maskPolygon.setStyle(getMaskStyle(isDarkMode));
+
+        updateThemeUi();
+        saveTheme(isDarkMode ? "dark" : "light");
+        closeMenu();
+      });
+
+      updateThemeUi();
+
+      /* Info Modals */
+      const infoModalTitle = $("infoModalTitle");
+      const infoModalBody = $("infoModalBody");
+
+      function showInfo(iconClass, title, bodyHtml) {
+        infoModalTitle.innerHTML = `<i class="${iconClass}" aria-hidden="true"></i> ${title}`;
+        infoModalBody.innerHTML = bodyHtml;
+        openModal(infoModal, $("closeInfoBtn"));
+        closeMenu(false);
+      }
+
+      $("aboutLink").addEventListener("click", () => {
+        showInfo(
+          "fa-solid fa-circle-info",
+          "About Us / Contact Us",
+          `
+                <p><strong>OCNP Mobile Navigation</strong></p>
+                <p>Providing accurate interactive location mapping and mobile map interfaces.</p>
+                <p><strong>Contact:</strong><br><a href="mailto:${CONTACT_EMAIL}" class="break-email">${CONTACT_EMAIL}</a></p>
+            `,
+        );
+      });
+
+      $("attributionsLink").addEventListener("click", () => {
+        showInfo(
+          "fa-solid fa-users",
+          "Attributions",
+          `
                 <ul class="info-list">
-                    <li><i class="fa-solid fa-map"></i> <span>Maps &copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors</span></li>
-                    <li><i class="fa-solid fa-code"></i> <span>Leaflet JS Engine</span></li>
-                    <li><i class="fa-solid fa-compass"></i> <span>Leaflet Rotate Plugin by Grzegorz Tomicki</span></li>
-                    <li><i class="fa-solid fa-icons"></i> <span>Icons by FontAwesome</span></li>
+                    <li><i class="fa-solid fa-map" aria-hidden="true"></i> <span>Maps &copy; <a href="https://stadiamaps.com/" target="_blank" rel="noopener noreferrer">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank" rel="noopener noreferrer">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors</span></li>
+                    <li><i class="fa-solid fa-code" aria-hidden="true"></i> <span>Leaflet JS Engine</span></li>
+                    <li><i class="fa-solid fa-compass" aria-hidden="true"></i> <span>Leaflet Rotate Plugin by Grzegorz Tomicki</span></li>
+                    <li><i class="fa-solid fa-icons" aria-hidden="true"></i> <span>Icons by FontAwesome</span></li>
                 </ul>
-            `;
-            infoModal.classList.add('active');
-        });
+            `,
+        );
+      });
 
-        closeInfoBtn.addEventListener('click', () => {
-            infoModal.classList.remove('active');
-        });
+      $("closeInfoBtn").addEventListener("click", () => closeModal(infoModal));
+
+      initRouting();
     </script>
-</body>
+  </body>
 </html>

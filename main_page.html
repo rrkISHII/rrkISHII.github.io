@@ -445,6 +445,9 @@
         <p class="sheet-description" id="sheetDescription">
           Building description text goes here...
         </p>
+
+        <!-- Floor dropdowns (shown for the ELO building only) -->
+        <div class="floor-list" id="floorList" hidden></div>
       </div>
     </div>
 
@@ -3542,12 +3545,208 @@
         if (state !== "closed") document.body.classList.add("sheet-" + state);
       }
 
+      /* ELO building: floor-by-floor room directory */
+      const ELO_FLOORS = {
+        1: { label: "Floor 1", rooms: [["", "Security Dept"], ["", "CHOW"]] },
+        2: {
+          label: "Floor 2",
+          rooms: [
+            ["201", "Registrar's Office"],
+            ["202", "Office of the Vice President"],
+            ["203", "Board Room"],
+            ["", "Cashier"],
+          ],
+        },
+        3: {
+          label: "Floor 3",
+          rooms: [
+            ["307", "Faculty"],
+            ["308", "Educ Lab 2"],
+            ["309", "Educ Lab 1"],
+            ["310", ""],
+            ["311", ""],
+            ["312", ""],
+            ["313", ""],
+          ],
+        },
+        4: {
+          label: "Floor 4",
+          rooms: [
+            ["401", ""],
+            ["402", "Consultation Room (right) | Business Administration Lab (left)"],
+            ["403", "Accountancy Lab"],
+            ["404", "Customs Administration Lab"],
+            ["405", ""],
+            ["406", ""],
+            ["407", ""],
+            ["408", ""],
+            ["409", "Faculty"],
+            ["410", ""],
+            ["411", ""],
+            ["412", ""],
+            ["413", ""],
+            ["414", ""],
+          ],
+        },
+        5: {
+          label: "Floor 5",
+          rooms: [
+            ["501", ""],
+            ["502", ""],
+            ["503", ""],
+            ["504", ""],
+            ["505", ""],
+            ["506", ""],
+            ["507", ""],
+            ["508", ""],
+            ["509", "Faculty"],
+            ["510", ""],
+            ["511", ""],
+            ["512", ""],
+            ["513", "Conference Room (3 rooms)"],
+            ["514", ""],
+          ],
+        },
+        6: {
+          label: "Floor 6",
+          rooms: [
+            ["601", ""],
+            ["602", ""],
+            ["603", ""],
+            ["604", ""],
+            ["605", ""],
+            ["606", ""],
+            ["607", ""],
+            ["608", ""],
+            ["609", "IT Dept"],
+            ["610", "TESDA Lab (2 rooms)"],
+            ["611", ""],
+            ["612", "CL1"],
+            ["613", "CL2"],
+            ["614", "CL3"],
+          ],
+        },
+        7: {
+          label: "Floor 7",
+          rooms: [
+            ["701", "Isolation Room"],
+            ["702", "Pharmacy / Centralized Supply"],
+            ["703", ""],
+            ["704", ""],
+            ["705", ""],
+            ["706", ""],
+            ["707", "Conference Room"],
+            ["710", "Emergency Room"],
+          ],
+        },
+        8: {
+          label: "Floor 8",
+          rooms: [
+            ["801", ""],
+            ["802", ""],
+            ["803", ""],
+            ["804", ""],
+            ["805", "Faculty"],
+            ["806", "Faculty"],
+            ["807", "Library"],
+            ["808", "Faculty"],
+            ["809", "Defense Room"],
+            ["810", "Quality Assurance Office"],
+            ["811", "Office Records Room"],
+            ["812", ""],
+            ["813", ""],
+            ["814", ""],
+          ],
+        },
+        9: {
+          label: "Floor 9",
+          rooms: [
+            ["901", ""],
+            ["902", ""],
+            ["903", ""],
+            ["904", ""],
+            ["905", ""],
+            ["906", ""],
+            ["907", ""],
+            ["908", ""],
+            ["909", ""],
+            ["910", ""],
+            ["911", ""],
+            ["912", ""],
+            ["913", ""],
+            ["914", ""],
+          ],
+        },
+        10: { label: "Floor 10", rooms: [["", "Gymnasium"]] },
+      };
+
+      const floorList = $("floorList");
+
+      function renderFloorList(data) {
+        const isElo = data && (data.id === "OC_ELO" || data.title === "ELO");
+        floorList.hidden = !isElo;
+        floorList.textContent = "";
+        if (!isElo) return;
+
+        Object.keys(ELO_FLOORS)
+          .map(Number)
+          .sort((a, b) => a - b)
+          .forEach((n) => {
+            const floor = ELO_FLOORS[n];
+            const details = document.createElement("details");
+            details.className = "floor-item";
+            if (pendingRoomFocus && pendingRoomFocus.floor === n)
+              details.open = true;
+
+            const summary = document.createElement("summary");
+            summary.className = "floor-summary";
+            const label = document.createElement("span");
+            label.textContent = floor.label;
+            const count = document.createElement("span");
+            count.className = "floor-count";
+            count.textContent =
+              floor.rooms.length + (floor.rooms.length === 1 ? " room" : " rooms");
+            const chevron = document.createElement("i");
+            chevron.className = "fa-solid fa-chevron-down floor-chevron";
+            chevron.setAttribute("aria-hidden", "true");
+            summary.append(label, count, chevron);
+
+            const ul = document.createElement("ul");
+            ul.className = "floor-rooms";
+            floor.rooms.forEach(([num, name]) => {
+              const li = document.createElement("li");
+              if (
+                pendingRoomFocus &&
+                pendingRoomFocus.floor === n &&
+                pendingRoomFocus.num === num &&
+                pendingRoomFocus.name === name
+              )
+                li.className = "room-hit";
+              if (num) {
+                const badge = document.createElement("span");
+                badge.className = "room-num";
+                badge.textContent = num;
+                li.appendChild(badge);
+              }
+              const txt = document.createElement("span");
+              txt.className = "room-name" + (name ? "" : " room-name-plain");
+              txt.textContent = name || "Room " + num;
+              li.appendChild(txt);
+              ul.appendChild(li);
+            });
+
+            details.append(summary, ul);
+            floorList.appendChild(details);
+          });
+      }
+
       function openBottomSheet(data) {
         sheetTitle.textContent = data.title || "Location Details";
         sheetDescription.textContent =
           data.description || "No description available.";
         activeBuildingData = data;
         refreshSheetActions();
+        renderFloorList(data);
 
         if (!bottomSheet.contains(document.activeElement)) {
           sheetOpener = document.activeElement;
@@ -5262,6 +5461,62 @@
       /* Search Combobox */
       let visibleBuildings = [];
       let activeIndex = -1;
+      let buildingRoomHits = new Map();
+      let pendingRoomFocus = null;
+
+      /* Room search: lets "registrar", "accounting", "507" or "chow" find the ELO building */
+      const normalizeText = (t) =>
+        String(t)
+          .toLowerCase()
+          .replace(/['’`]/g, "")
+          .replace(/[^a-z0-9]+/g, " ")
+          .trim();
+
+      const tokenize = (t) => normalizeText(t).split(" ").filter(Boolean);
+
+      /* A query word matches a word of the text if it is a prefix of it, or the other way round,
+         or both share a long stem (accounting / accountancy). */
+      function tokenMatches(q, w) {
+        if (w.startsWith(q)) return true;
+        if (q.length >= 3 && q.startsWith(w) && w.length >= 3) return true;
+        if (q.length >= 5 && w.length >= 5) {
+          let i = 0;
+          while (i < q.length && i < w.length && q[i] === w[i]) i++;
+          if (i >= 6) return true;
+        }
+        return false;
+      }
+
+      const ELO_ROOM_INDEX = [];
+      Object.keys(ELO_FLOORS).forEach((n) => {
+        const floor = ELO_FLOORS[n];
+        floor.rooms.forEach(([num, name]) => {
+          ELO_ROOM_INDEX.push({
+            floor: Number(n),
+            num,
+            name,
+            tokens: tokenize(`${num} ${name} floor ${n}`),
+          });
+        });
+      });
+
+      function findRoomHits(building, rawQuery) {
+        if (!(building.id === "OC_ELO" || building.title === "ELO")) return [];
+        const qTokens = tokenize(rawQuery);
+        if (!qTokens.length) return [];
+        const titleTokens = tokenize(`${building.title} ${building.id || ""}`);
+        return ELO_ROOM_INDEX.filter((r) => {
+          const hay = titleTokens.concat(r.tokens);
+          return qTokens.every((q) => hay.some((w) => tokenMatches(q, w)));
+        });
+      }
+
+      function roomHitLabel(r) {
+        const where = r.floor === 10 || r.num || r.name ? `Floor ${r.floor}` : "";
+        if (r.num && r.name) return `${r.num} ${r.name} (${where})`;
+        if (r.num) return `Room ${r.num} (${where})`;
+        return `${r.name} (${where})`;
+      }
 
       function setDropdownOpen(open) {
         searchDropdown.classList.toggle("active", open);
@@ -5289,9 +5544,13 @@
         searchInput.removeAttribute("aria-activedescendant");
 
         const query = filterText.toLowerCase();
-        visibleBuildings = campusBuildings.filter((b) =>
-          b.title.toLowerCase().includes(query),
-        );
+        buildingRoomHits = new Map();
+        visibleBuildings = campusBuildings.filter((b) => {
+          if (b.title.toLowerCase().includes(query)) return true;
+          const hits = findRoomHits(b, filterText);
+          if (hits.length) buildingRoomHits.set(b, hits);
+          return hits.length > 0;
+        });
 
         if (visibleBuildings.length === 0) {
           const li = document.createElement("li");
@@ -5321,19 +5580,35 @@
           iconWrapper.appendChild(icon);
 
           const label = document.createElement("span");
+          label.className = "building-item-label";
           label.textContent = building.title;
 
-          li.append(iconWrapper, label);
+          const textWrap = document.createElement("div");
+          textWrap.className = "building-item-text";
+          textWrap.appendChild(label);
+
+          const hits = buildingRoomHits.get(building);
+          if (hits && hits.length) {
+            const sub = document.createElement("span");
+            sub.className = "building-item-sub";
+            const shown = hits.slice(0, 3).map(roomHitLabel).join(" • ");
+            sub.textContent =
+              shown + (hits.length > 3 ? ` • +${hits.length - 3} more` : "");
+            textWrap.appendChild(sub);
+          }
+
+          li.append(iconWrapper, textWrap);
           li.addEventListener("click", (e) => {
             e.stopPropagation();
-            selectBuilding(building);
+            selectBuilding(building, (hits && hits[0]) || null);
           });
           buildingsList.appendChild(li);
         });
       }
 
-      function selectBuilding(building) {
+      function selectBuilding(building, roomHit = null) {
         setDropdownOpen(false);
+        pendingRoomFocus = roomHit;
         searchInput.value = building.title;
         updateSearchIconState();
 
@@ -5384,9 +5659,13 @@
           if (!isOpen || !visibleBuildings.length) return;
           e.preventDefault();
           if (activeIndex >= 0) {
-            selectBuilding(visibleBuildings[activeIndex]);
+            const b = visibleBuildings[activeIndex];
+            const h = buildingRoomHits.get(b);
+            selectBuilding(b, (h && h[0]) || null);
           } else if (searchInput.value.trim()) {
-            selectBuilding(visibleBuildings[0]);
+            const b = visibleBuildings[0];
+            const h = buildingRoomHits.get(b);
+            selectBuilding(b, (h && h[0]) || null);
           }
         } else if (e.key === "Escape" && isOpen) {
           e.stopPropagation();

@@ -551,6 +551,28 @@ body.trip-mode .leaflet-top.leaflet-right {
     font-size: 16px;
 }
 
+.building-item-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: 2px;
+}
+
+.building-item-sub {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text-muted);
+    line-height: 1.35;
+}
+
+.floor-rooms li.room-hit {
+    background: var(--item-active);
+    border-radius: 8px;
+    padding-left: 8px;
+    padding-right: 8px;
+    margin: 0 -8px;
+}
+
 .building-item:active,
 .building-item:hover,
 .building-item.is-active {
@@ -1287,6 +1309,95 @@ body.dark-theme .sheet-stat-badge {
     color: var(--text-muted);
     line-height: 1.65;
     font-weight: 450;
+}
+
+/* Floor dropdowns (ELO building) */
+.floor-list {
+    margin-top: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.floor-list[hidden] {
+    display: none;
+}
+
+.floor-item {
+    background: var(--surface-muted);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.floor-summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    min-height: 48px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-strong);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.floor-summary::-webkit-details-marker {
+    display: none;
+}
+
+.floor-summary > span:first-child {
+    flex: 1;
+}
+
+.floor-count {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.floor-chevron {
+    font-size: 13px;
+    color: var(--accent);
+    transition: transform 0.2s ease;
+}
+
+.floor-item[open] .floor-chevron {
+    transform: rotate(180deg);
+}
+
+.floor-rooms {
+    list-style: none;
+    margin: 0;
+    padding: 0 16px 8px 16px;
+}
+
+.floor-rooms li {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 0;
+    border-top: 1px solid var(--border);
+    font-size: 14px;
+    color: var(--text-strong);
+    line-height: 1.4;
+}
+
+.room-num {
+    flex: 0 0 auto;
+    min-width: 44px;
+    text-align: center;
+    padding: 2px 8px;
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.room-name-plain {
+    color: var(--text-muted);
 }
 
 /* ==========================================================

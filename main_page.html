@@ -3545,199 +3545,262 @@
         if (state !== "closed") document.body.classList.add("sheet-" + state);
       }
 
-      /* ELO building: floor-by-floor room directory */
-      const ELO_FLOORS = {
-        1: { label: "Floor 1", rooms: [["", "Security Dept"], ["", "CHOW"]] },
-        2: {
-          label: "Floor 2",
-          rooms: [
+      /* Building directories: dropdown per floor/section with room names.
+         Keyed by building id. Rooms are [number/code, name]; either can be "".
+         A section has one or more groups (e.g. Left Side / Middle / Right Side). */
+      const G = (rooms, label = null) => ({ label, rooms });
+      const BUILDING_DIRECTORY = {
+        OC_ELO: [
+          { label: "Floor 1", groups: [G([["", "Security Department"], ["", "CHOW"]])] },
+          { label: "Floor 2", groups: [G([
+            ["", "Cashier"],
+            ["", "Board Room"],
             ["201", "Registrar's Office"],
             ["202", "Office of the Vice President"],
-            ["203", "Board Room"],
-            ["", "Cashier"],
-          ],
-        },
-        3: {
-          label: "Floor 3",
-          rooms: [
-            ["307", "Faculty"],
-            ["308", "Educ Lab 2"],
-            ["309", "Educ Lab 1"],
-            ["310", ""],
-            ["311", ""],
-            ["312", ""],
-            ["313", ""],
-          ],
-        },
-        4: {
-          label: "Floor 4",
-          rooms: [
-            ["401", ""],
-            ["402", "Consultation Room (right) | Business Administration Lab (left)"],
+          ])] },
+          { label: "Floor 3", groups: [G([
+            ["307", "Faculty Room"],
+            ["308", "Education Lab 2"],
+            ["309", "Education Lab 1"],
+          ])] },
+          { label: "Floor 4", groups: [G([
+            ["402", "Consultation Room"],
+            ["402", "Business Administration Lab"],
             ["403", "Accountancy Lab"],
             ["404", "Customs Administration Lab"],
-            ["405", ""],
-            ["406", ""],
-            ["407", ""],
-            ["408", ""],
-            ["409", "Faculty"],
-            ["410", ""],
-            ["411", ""],
-            ["412", ""],
-            ["413", ""],
-            ["414", ""],
-          ],
-        },
-        5: {
-          label: "Floor 5",
-          rooms: [
-            ["501", ""],
-            ["502", ""],
-            ["503", ""],
-            ["504", ""],
-            ["505", ""],
-            ["506", ""],
-            ["507", ""],
-            ["508", ""],
-            ["509", "Faculty"],
-            ["510", ""],
-            ["511", ""],
-            ["512", ""],
-            ["513", "Conference Room (3 rooms)"],
-            ["514", ""],
-          ],
-        },
-        6: {
-          label: "Floor 6",
-          rooms: [
-            ["601", ""],
-            ["602", ""],
-            ["603", ""],
-            ["604", ""],
-            ["605", ""],
-            ["606", ""],
-            ["607", ""],
-            ["608", ""],
-            ["609", "IT Dept"],
-            ["610", "TESDA Lab (2 rooms)"],
-            ["611", ""],
-            ["612", "CL1"],
-            ["613", "CL2"],
-            ["614", "CL3"],
-          ],
-        },
-        7: {
-          label: "Floor 7",
-          rooms: [
+            ["409", "Faculty Room"],
+          ])] },
+          { label: "Floor 5", groups: [G([
+            ["506", "Faculty Room"],
+            ["509", "Faculty Room"],
+            ["513", "Conference Room"],
+          ])] },
+          { label: "Floor 6", groups: [G([
+            ["609", "IT Department"],
+            ["610", "TESDA Laboratories"],
+            ["612", "Computer Laboratory 1 (CL1)"],
+            ["613", "Computer Laboratory 2 (CL2)"],
+            ["614", "Computer Laboratory 3 (CL3)"],
+          ])] },
+          { label: "Floor 7", groups: [G([
             ["701", "Isolation Room"],
-            ["702", "Pharmacy / Centralized Supply"],
-            ["703", ""],
-            ["704", ""],
-            ["705", ""],
-            ["706", ""],
+            ["702", "Pharmacy Central Supply"],
             ["707", "Conference Room"],
             ["710", "Emergency Room"],
-          ],
-        },
-        8: {
-          label: "Floor 8",
-          rooms: [
-            ["801", ""],
-            ["802", ""],
-            ["803", ""],
-            ["804", ""],
-            ["805", "Faculty"],
-            ["806", "Faculty"],
+          ])] },
+          { label: "Floor 8", groups: [G([
+            ["805", "Faculty Room"],
             ["807", "Library"],
-            ["808", "Faculty"],
+            ["808", "Faculty Room"],
             ["809", "Defense Room"],
             ["810", "Quality Assurance Office"],
             ["811", "Office Records Room"],
-            ["812", ""],
-            ["813", ""],
-            ["814", ""],
-          ],
-        },
-        9: {
-          label: "Floor 9",
-          rooms: [
-            ["901", ""],
-            ["902", ""],
-            ["903", ""],
-            ["904", ""],
-            ["905", ""],
-            ["906", ""],
-            ["907", ""],
-            ["908", ""],
-            ["909", ""],
-            ["910", ""],
-            ["911", ""],
-            ["912", ""],
-            ["913", ""],
-            ["914", ""],
-          ],
-        },
-        10: { label: "Floor 10", rooms: [["", "Gymnasium"]] },
+          ])] },
+          { label: "Floor 10", groups: [G([["", "Gymnasium"]])] },
+        ],
+        OC_ADL: [
+          { label: "4th Floor – Nursing", groups: [G([
+            ["", "12 Commitment"],
+            ["", "12 Compassion"],
+            ["", "12 Cooperation"],
+            ["", "X-ray Lab"],
+            ["", "Ultrasound Lab / ADL 4"],
+            ["", "Radiologic Technology Faculty / ADL 407"],
+            ["ADL 408", "Nursing Arts Lab 3"],
+            ["", "Nursing Arts Lab 3 – Lecture Room"],
+            ["", "ADL 4 – Lecture Room"],
+            ["", "Lab 5 – Lecture Room"],
+            ["", "Lab 6"],
+          ])] },
+        ],
+        OC_IBED: [
+          { label: "Rooms", groups: [G([
+            ["RLO 206", "Laboratory Office"],
+            ["RLO 210", ""],
+            ["RLO 209", ""],
+            ["RLO 208", "Science Laboratory"],
+            ["RLO 207", "Student Affairs and Service Office"],
+            ["RLO 201", ""],
+            ["RLO 202", ""],
+            ["RLO 203", ""],
+            ["RLO 204", "Grade Learning Resource Center / School Center"],
+            ["RLO 205", ""],
+            ["", "Comfort Room (CR)"],
+          ])] },
+        ],
+        OC_CASA: [
+          { label: "1st Floor", groups: [G([["AL 103", "Cookery NC II Assessment Center"]])] },
+        ],
+        OC_DPRO: [
+          { label: "1st Floor", groups: [
+            G([
+              ["PRO 116", ""], ["PRO 117", ""], ["PRO 118", ""], ["PRO 119", ""],
+              ["PRO 120", "DPRO SHS Faculty Room"],
+              ["", "CR 1"], ["", "CR 2"],
+            ]),
+            G([
+              ["SDL 115", ""], ["PRO 114", ""], ["PRO 113", ""],
+              ["PRO 112", "Faculty Room"],
+              ["PRO 110", ""], ["PRO 109", ""], ["PRO 108", ""],
+            ]),
+            G([
+              ["PRO 101", ""], ["PRO 102", ""], ["PRO 103", ""], ["PRO 104", ""],
+              ["PRO 105", ""], ["PRO 106", ""], ["PRO 107", ""],
+            ]),
+          ] },
+          { label: "2nd Floor", groups: [
+            G([
+              ["PRO 201", ""], ["PRO 202", ""], ["PRO 203", ""], ["PRO 204", ""],
+              ["", "CR"],
+            ]),
+            G([["SDL 207", ""], ["PRO 206", ""], ["PRO 205", ""]]),
+            G([
+              ["", "Storage Room"],
+              ["", "Multimedia Room"],
+              ["", "Computer / Internet Section"],
+              ["", "Discussion Room"],
+              ["", "Filipiniana Section"],
+              ["", "Intensive Reading Room"],
+              ["", "Information and Acquisition Section"],
+              ["", "Research Office"],
+              ["", "General Reference and Serial Section"],
+              ["", "Special Collection Section"],
+            ], "Library"),
+          ] },
+          { label: "3rd Floor", groups: [
+            G([
+              ["PRO 304", "Faculty Room"], ["PRO 303", ""], ["PRO 302", ""], ["PRO 301", ""],
+              ["", "CR"],
+            ]),
+            G([
+              ["PRO 305", ""], ["PRO 306", ""], ["PRO 307", ""],
+              ["PRO 308", "Faculty Room"],
+            ]),
+            G([
+              ["PRO 309", ""], ["PRO 310", ""], ["PRO 311", ""], ["PRO 312", ""], ["PRO 313", ""],
+            ]),
+            G([
+              ["", "Computer Laboratory 1 (COMLAB 1)"],
+              ["", "Computer Laboratory 2 (COMLAB 2)"],
+              ["", "Computer Laboratory 3 (COMLAB 3)"],
+              ["", "IT Department"],
+              ["", "Reserve and Newly Acquired Section"],
+              ["", "General Collection and Fiction Section"],
+              ["", "CR"],
+            ], "Library"),
+          ] },
+        ],
+        OC_CRIMINOLOGY: [
+          { label: "1st Floor", groups: [G([["", "Entrance"]])] },
+          { label: "2nd Floor", groups: [G([
+            ["PO 203", ""],
+            ["", "Male CR"],
+            ["", "Photo Laboratory"],
+            ["PO 201", ""],
+            ["PO 202", "Interrogation Room"],
+          ])] },
+          { label: "3rd Floor", groups: [G([
+            ["PO 303", "Office of the Program Chair"],
+            ["", "Female CR"],
+            ["PO 302", "Faculty Room"],
+            ["PO 301", ""],
+            ["", "Exit"],
+          ])] },
+          { label: "4th Floor", groups: [G([
+            ["PO 401", "Crime Laboratory"],
+            ["", "General Laboratory"],
+            ["", "Bullet Recovery Room"],
+            ["PO 2", "Armory"],
+            ["", "Faculty Male CR"],
+            ["", "Faculty Female CR"],
+          ])] },
+        ],
       };
+
+      /* Title fallbacks, in case a building has no id in the geojson */
+      const DIRECTORY_TITLE_TO_ID = {
+        ELO: "OC_ELO",
+        ADL: "OC_ADL",
+        IBED: "OC_IBED",
+        CASA: "OC_CASA",
+        DPRO: "OC_DPRO",
+        CRIMINOLOGY: "OC_CRIMINOLOGY",
+      };
+
+      function getDirectoryKey(b) {
+        if (!b) return null;
+        if (b.id && BUILDING_DIRECTORY[b.id]) return b.id;
+        const k = DIRECTORY_TITLE_TO_ID[String(b.title || "").toUpperCase()];
+        return k && BUILDING_DIRECTORY[k] ? k : null;
+      }
+
+      const sectionRoomCount = (sec) =>
+        sec.groups.reduce((n, g) => n + g.rooms.length, 0);
 
       const floorList = $("floorList");
 
       function renderFloorList(data) {
-        const isElo = data && (data.id === "OC_ELO" || data.title === "ELO");
-        floorList.hidden = !isElo;
+        const key = getDirectoryKey(data);
+        floorList.hidden = !key;
         floorList.textContent = "";
-        if (!isElo) return;
+        if (!key) return;
 
-        Object.keys(ELO_FLOORS)
-          .map(Number)
-          .sort((a, b) => a - b)
-          .forEach((n) => {
-            const floor = ELO_FLOORS[n];
-            const details = document.createElement("details");
-            details.className = "floor-item";
-            if (pendingRoomFocus && pendingRoomFocus.floor === n)
-              details.open = true;
+        BUILDING_DIRECTORY[key].forEach((sec, si) => {
+          const details = document.createElement("details");
+          details.className = "floor-item";
+          if (pendingRoomFocus && pendingRoomFocus.section === si)
+            details.open = true;
 
-            const summary = document.createElement("summary");
-            summary.className = "floor-summary";
-            const label = document.createElement("span");
-            label.textContent = floor.label;
-            const count = document.createElement("span");
-            count.className = "floor-count";
-            count.textContent =
-              floor.rooms.length + (floor.rooms.length === 1 ? " room" : " rooms");
-            const chevron = document.createElement("i");
-            chevron.className = "fa-solid fa-chevron-down floor-chevron";
-            chevron.setAttribute("aria-hidden", "true");
-            summary.append(label, count, chevron);
+          const summary = document.createElement("summary");
+          summary.className = "floor-summary";
+          const label = document.createElement("span");
+          label.textContent = sec.label;
+          const total = sectionRoomCount(sec);
+          const count = document.createElement("span");
+          count.className = "floor-count";
+          count.textContent = total + (total === 1 ? " room" : " rooms");
+          const chevron = document.createElement("i");
+          chevron.className = "fa-solid fa-chevron-down floor-chevron";
+          chevron.setAttribute("aria-hidden", "true");
+          summary.append(label, count, chevron);
 
-            const ul = document.createElement("ul");
-            ul.className = "floor-rooms";
-            floor.rooms.forEach(([num, name]) => {
+          const ul = document.createElement("ul");
+          ul.className = "floor-rooms";
+          sec.groups.forEach((grp) => {
+            if (grp.label) {
+              const head = document.createElement("li");
+              head.className = "floor-group-label";
+              head.textContent = grp.label;
+              ul.appendChild(head);
+            }
+            grp.rooms.forEach(([num, name]) => {
               const li = document.createElement("li");
               if (
                 pendingRoomFocus &&
-                pendingRoomFocus.floor === n &&
+                pendingRoomFocus.section === si &&
                 pendingRoomFocus.num === num &&
                 pendingRoomFocus.name === name
               )
                 li.className = "room-hit";
-              if (num) {
+              const numeric = /^\d+$/.test(num);
+              if (num && (name || numeric)) {
                 const badge = document.createElement("span");
                 badge.className = "room-num";
                 badge.textContent = num;
                 li.appendChild(badge);
               }
               const txt = document.createElement("span");
-              txt.className = "room-name" + (name ? "" : " room-name-plain");
-              txt.textContent = name || "Room " + num;
+              txt.className = "room-name" + (name || !num ? "" : " room-name-plain");
+              txt.textContent = name || (numeric ? "Room " + num : num);
+              if (!name && numeric) txt.classList.add("room-name-plain");
               li.appendChild(txt);
               ul.appendChild(li);
             });
-
-            details.append(summary, ul);
-            floorList.appendChild(details);
           });
+
+          details.append(summary, ul);
+          floorList.appendChild(details);
+        });
       }
 
       function openBottomSheet(data) {
@@ -5487,34 +5550,42 @@
         return false;
       }
 
-      const ELO_ROOM_INDEX = [];
-      Object.keys(ELO_FLOORS).forEach((n) => {
-        const floor = ELO_FLOORS[n];
-        floor.rooms.forEach(([num, name]) => {
-          ELO_ROOM_INDEX.push({
-            floor: Number(n),
-            num,
-            name,
-            tokens: tokenize(`${num} ${name} floor ${n}`),
+      const ROOM_INDEX = {};
+      Object.keys(BUILDING_DIRECTORY).forEach((key) => {
+        ROOM_INDEX[key] = [];
+        BUILDING_DIRECTORY[key].forEach((sec, si) => {
+          sec.groups.forEach((grp) => {
+            grp.rooms.forEach(([num, name]) => {
+              ROOM_INDEX[key].push({
+                section: si,
+                sectionLabel: sec.label,
+                num,
+                name,
+                tokens: tokenize(
+                  `${num} ${name} ${sec.label} ${grp.label || ""}`,
+                ),
+              });
+            });
           });
         });
       });
 
       function findRoomHits(building, rawQuery) {
-        if (!(building.id === "OC_ELO" || building.title === "ELO")) return [];
+        const key = getDirectoryKey(building);
+        if (!key) return [];
         const qTokens = tokenize(rawQuery);
         if (!qTokens.length) return [];
         const titleTokens = tokenize(`${building.title} ${building.id || ""}`);
-        return ELO_ROOM_INDEX.filter((r) => {
+        return ROOM_INDEX[key].filter((r) => {
           const hay = titleTokens.concat(r.tokens);
           return qTokens.every((q) => hay.some((w) => tokenMatches(q, w)));
         });
       }
 
       function roomHitLabel(r) {
-        const where = r.floor === 10 || r.num || r.name ? `Floor ${r.floor}` : "";
+        const where = r.sectionLabel;
         if (r.num && r.name) return `${r.num} ${r.name} (${where})`;
-        if (r.num) return `Room ${r.num} (${where})`;
+        if (r.num) return `${/^\d+$/.test(r.num) ? "Room " : ""}${r.num} (${where})`;
         return `${r.name} (${where})`;
       }
 
